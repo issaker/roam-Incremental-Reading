@@ -52,7 +52,7 @@ y
 在 Roam Research 的扩展页面roam deport中打开开发者模式，添加以下地址：
 
 ```
-https://raw.githubusercontent.com/issaker/roam-memo-prio/main/extension.js
+https://raw.githubusercontent.com/issaker/Memo-Enhanced/main/extension.js
 ```
 
 **安装步骤：**
