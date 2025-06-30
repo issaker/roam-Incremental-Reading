@@ -66,6 +66,9 @@ interface Props {
   cardUids: Record<string, string[]>;
   defaultPriority: number;
   fsrsEnabled: boolean;
+  deckPriorities: Record<string, any>;
+  isGlobalMixedMode: boolean;
+  setIsGlobalMixedMode: (mode: boolean) => void;
 }
 
 const PracticeOverlay = ({
@@ -90,32 +93,45 @@ const PracticeOverlay = ({
   cardUids,
   defaultPriority,
   fsrsEnabled,
+  deckPriorities,
+  isGlobalMixedMode,
+  setIsGlobalMixedMode,
 }: Props) => {
-  const todaySelectedTag = today.tags[selectedTag];
+  const todaySelectedTag = today.tags[selectedTag] || { completed: 0, dueUids: [], newUids: [] };
   const completedTodayCount = todaySelectedTag.completed;
   
-  // 按优先级排名合并队列
+  // 🚀 修改：根据混合学习模式生成不同的练习队列
   const practiceCardUids = React.useMemo(() => {
-    const allCards = [...todaySelectedTag.dueUids, ...todaySelectedTag.newUids];
-    
-    if (priorityOrder.length === 0) {
-      return allCards;
+    let cardUidsToPractice: string[] = [];
+
+    if (isGlobalMixedMode) {
+      // 全局混合模式：从所有牌组收集卡片
+      cardUidsToPractice = tagsList.flatMap(tag => {
+        const tagData = today.tags[tag];
+        return tagData ? [...tagData.dueUids, ...tagData.newUids] : [];
+      });
+      // 去重
+      cardUidsToPractice = [...new Set(cardUidsToPractice)];
+    } else {
+      // 单牌组模式：仅显示当前选中牌组的卡片
+      cardUidsToPractice = [...todaySelectedTag.dueUids, ...todaySelectedTag.newUids];
     }
     
-    return allCards.sort((a, b) => {
-      const aIndex = priorityOrder.indexOf(a as string);
-      const bIndex = priorityOrder.indexOf(b as string);
-      
-      if (aIndex !== -1 && bIndex !== -1) {
-        return aIndex - bIndex;
-      }
-      
-      if (aIndex !== -1) return -1;
-      if (bIndex !== -1) return 1;
-      
-      return 0;
-    });
-  }, [todaySelectedTag.dueUids, todaySelectedTag.newUids, priorityOrder]);
+    // 按全局优先级排序
+    if (priorityOrder.length > 0) {
+      return cardUidsToPractice.sort((a, b) => {
+        const aIndex = priorityOrder.indexOf(a);
+        const bIndex = priorityOrder.indexOf(b);
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        return 0;
+      });
+    }
+    
+    return cardUidsToPractice;
+  }, [isGlobalMixedMode, tagsList, today.tags, todaySelectedTag.dueUids, todaySelectedTag.newUids, priorityOrder]);
+
   const renderMode = todaySelectedTag.renderMode;
 
   const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -156,15 +172,6 @@ const PracticeOverlay = ({
   
   // 牌组优先级管理
   const [showDeckPriorityManager, setShowDeckPriorityManager] = React.useState(false);
-  
-  const { deckPriorities, updateDeckPriority, isLoading: deckPriorityLoading } = useDeckPriority({
-    tagsList,
-    practiceData,
-    cardUids,
-    priorityOrder,
-    allCardsCount,
-    defaultPriority,
-  });
   
   // ✅ 添加组件卸载标志，防止异步操作在组件卸载后执行
   const isMountedRef = React.useRef(true);
@@ -417,6 +424,43 @@ const PracticeOverlay = ({
     prevShouldShowSlider.current = shouldShowSlider;
   }, [shouldShowSlider, rankingChanges, dataPageTitle, allCardUids]); // ✅ 添加allCardUids到依赖
 
+  // 计算显示进度
+  const queueLength = practiceCardUids ? practiceCardUids.length : 0;
+  const todayTotalTarget = isCramming 
+    ? queueLength 
+    : isGlobalMixedMode
+    ? globalStats
+      ? globalStats.totalCompleted + queueLength
+      : 0
+    : completedTodayCount + queueLength;
+  const currentDisplayCount = isCramming 
+    ? currentIndex + 1 
+    : isGlobalMixedMode
+    ? globalStats
+      ? globalStats.totalCompleted + currentIndex + 1
+      : 0
+    : completedTodayCount + currentIndex + 1;
+
+  // 🚀 计算全局混合模式下的统计数据
+  const globalStats = React.useMemo(() => {
+    if (!isGlobalMixedMode) return null;
+
+    let totalDue = 0;
+    let totalNew = 0;
+    let totalCompleted = 0;
+
+    for (const tag of tagsList) {
+      const tagData = today.tags[tag];
+      if (tagData) {
+        totalDue += tagData.due || 0;
+        totalNew += tagData.new || 0;
+        totalCompleted += tagData.completed || 0;
+      }
+    }
+
+    return { totalDue, totalNew, totalCompleted };
+  }, [isGlobalMixedMode, tagsList, today.tags]);
+
   return (
     <MainContext.Provider
       value={{
@@ -454,6 +498,8 @@ const PracticeOverlay = ({
           isCramming={isCramming}
           practiceCardUids={practiceCardUids}
           onOpenDeckPriority={() => setShowDeckPriorityManager(true)}
+          isGlobalMixedMode={isGlobalMixedMode}
+          setIsGlobalMixedMode={setIsGlobalMixedMode}
         />
 
         <DialogBody
@@ -539,7 +585,6 @@ const PracticeOverlay = ({
         isOpen={showDeckPriorityManager}
         onClose={() => setShowDeckPriorityManager(false)}
         deckPriorities={deckPriorities}
-        updateDeckPriority={updateDeckPriority}
         selectedDeck={selectedTag}
       />
     </MainContext.Provider>
@@ -860,15 +905,72 @@ const Header = ({
   isCramming,
   practiceCardUids,
   onOpenDeckPriority,
+  isGlobalMixedMode,
+  setIsGlobalMixedMode,
+}: {
+  tagsList: string[];
+  onCloseCallback: () => void;
+  onTagChange: (tag: string) => void;
+  className?: string;
+  status: any;
+  isDone: boolean;
+  nextDueDate: any;
+  showBreadcrumbs: boolean;
+  setShowBreadcrumbs: (show: boolean) => void;
+  isCramming: boolean;
+  practiceCardUids: string[];
+  onOpenDeckPriority?: () => void;
+  isGlobalMixedMode: boolean;
+  setIsGlobalMixedMode: (mode: boolean) => void;
 }) => {
   const { selectedTag, today, currentIndex } = useSafeContext(MainContext);
-  const todaySelectedTag = today.tags[selectedTag];
+  
+  // 🔧 防御性编程：确保 todaySelectedTag 存在
+  const todaySelectedTag = today.tags[selectedTag] || {
+    completed: 0,
+    due: 0,
+    new: 0,
+    dueUids: [],
+    newUids: [],
+  };
   const completedTodayCount = todaySelectedTag.completed;
   
+  // 🚀 计算全局混合模式下的统计数据
+  const globalStats = React.useMemo(() => {
+    if (!isGlobalMixedMode) return null;
+
+    let totalDue = 0;
+    let totalNew = 0;
+    let totalCompleted = 0;
+
+    for (const tag of tagsList) {
+      const tagData = today.tags[tag];
+      if (tagData) {
+        totalDue += tagData.due || 0;
+        totalNew += tagData.new || 0;
+        totalCompleted += tagData.completed || 0;
+      }
+    }
+
+    return { totalDue, totalNew, totalCompleted };
+  }, [isGlobalMixedMode, tagsList, today.tags]);
+
   // 计算显示进度
   const queueLength = practiceCardUids ? practiceCardUids.length : 0;
-  const todayTotalTarget = isCramming ? queueLength : completedTodayCount + queueLength;
-  const currentDisplayCount = isCramming ? currentIndex + 1 : completedTodayCount + currentIndex + 1;
+  const todayTotalTarget = isCramming
+    ? queueLength
+    : isGlobalMixedMode
+    ? globalStats
+      ? globalStats.totalCompleted + queueLength
+      : 0
+    : completedTodayCount + queueLength;
+  const currentDisplayCount = isCramming
+    ? currentIndex + 1
+    : isGlobalMixedMode
+    ? globalStats
+      ? globalStats.totalCompleted + currentIndex + 1
+      : 0
+    : completedTodayCount + currentIndex + 1;
 
   return (
     <HeaderWrapper className={className} tabIndex={0}>
@@ -877,8 +979,46 @@ const Header = ({
         <div tabIndex={-1}>
           <TagSelector tagsList={tagsList} selectedTag={selectedTag} onTagChange={onTagChange} />
         </div>
+
+        {/* 🚀 新增：全局混合学习开关 */}
+        <div className="mx-3">
+          <GlobalMixedToggleWrapper
+            className="flex items-center justify-center gap-1 bg-gray-50 px-2 py-1 rounded-md border border-gray-200"
+            style={{ minWidth: '80px' }}
+          >
+            <span
+              className={`text-xs ${!isGlobalMixedMode ? 'text-blue-600 font-medium' : 'text-gray-400'
+                }`}
+            >
+              单组
+            </span>
+            <Blueprint.Switch
+              className="mb-0"
+              style={{ transform: 'scale(0.8)' }}
+              checked={isGlobalMixedMode}
+              onChange={() => setIsGlobalMixedMode(!isGlobalMixedMode)}
+              data-testid="global-mixed-mode-switch"
+            />
+            <span
+              className={`text-xs ${isGlobalMixedMode ? 'text-blue-600 font-medium' : 'text-gray-400'
+                }`}
+            >
+              混合
+            </span>
+          </GlobalMixedToggleWrapper>
+        </div>
       </div>
+      
       <div className="flex items-center justify-end">
+        {/* 🚀 新增：全局混合模式状态提示 */}
+        {isGlobalMixedMode && globalStats && (
+          <Tooltip content={`待复习: ${globalStats.totalDue}, 新卡片: ${globalStats.totalNew}`}>
+            <div className="mr-2 text-xs text-gray-600">
+              全局: {globalStats.totalDue + globalStats.totalNew} 待学
+            </div>
+          </Tooltip>
+        )}
+
         {/* 牌组优先级管理按钮 */}
         {onOpenDeckPriority && (
           <Tooltip content="管理牌组优先级" placement="left">
@@ -929,5 +1069,15 @@ const Header = ({
     </HeaderWrapper>
   );
 };
+
+// 🚀 新增：全局混合开关的样式组件
+const GlobalMixedToggleWrapper = styled.div`
+  &:hover {
+    background-color: #e8f4f8;
+    border-color: #cce7f0;
+  }
+
+  transition: all 0.2s ease;
+`;
 
 export default PracticeOverlay;

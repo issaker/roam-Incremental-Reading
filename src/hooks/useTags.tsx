@@ -1,6 +1,9 @@
 import * as React from 'react';
 
 const splitStringByCommas = (str: string) => {
+  if (!str) {
+    return [];
+  }
   const result: string[] = [];
   let current = '';
   let isInsideQuote = false;

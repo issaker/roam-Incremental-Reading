@@ -30,6 +30,7 @@ const usePracticeCardsData = ({
   const isExecutingRef = React.useRef(false);
 
   React.useEffect(() => {
+    console.log('[usePracticeData] Hook effect triggered.');
     if (isExecutingRef.current) {
       if (process.env.NODE_ENV === 'development') {
         console.log('📊 [usePracticeData] 跳过重复执行，因为正在处理中...');
@@ -38,7 +39,11 @@ const usePracticeCardsData = ({
     }
 
     (async () => {
-      if (!selectedTag) return;
+      console.log('[usePracticeData] Async function started.');
+      if (!selectedTag) {
+        console.log('[usePracticeData] No selectedTag, returning.');
+        return;
+      }
 
       isExecutingRef.current = true;
       
@@ -55,6 +60,7 @@ const usePracticeCardsData = ({
       }
       
       try {
+        console.log('[usePracticeData] Calling getPracticeData with tagsList:', tagsList);
         const { practiceData, todayStats, allCardsCount, priorityOrder, allCardUids, cardUids } = await queries.getPracticeData({
           tagsList,
           dataPageTitle,
@@ -79,6 +85,7 @@ const usePracticeCardsData = ({
       } catch (error) {
         console.error('📊 [usePracticeData] 数据获取失败:', error);
       } finally {
+        console.log('[usePracticeData] Async function finished.');
         isExecutingRef.current = false;
       }
     })();

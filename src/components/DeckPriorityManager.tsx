@@ -2,6 +2,7 @@ import * as React from 'react';
 import * as Blueprint from '@blueprintjs/core';
 import styled from '@emotion/styled';
 import Tooltip from '~/components/Tooltip';
+import OffsetSlider from '~/components/OffsetSlider';
 
 interface DeckPriorityInfo {
   deckName: string;
@@ -11,7 +12,6 @@ interface DeckPriorityInfo {
 
 interface Props {
   deckPriorities: Record<string, DeckPriorityInfo>;
-  updateDeckPriority: (deckName: string, newPriority: number) => void;
   selectedDeck?: string;
   isOpen: boolean;
   onClose: () => void;
@@ -19,7 +19,6 @@ interface Props {
 
 const DeckPriorityManager = ({
   deckPriorities,
-  updateDeckPriority,
   selectedDeck,
   isOpen,
   onClose,
@@ -29,9 +28,6 @@ const DeckPriorityManager = ({
 
   const sortedDecks = React.useMemo(() => {
     return Object.values(deckPriorities).sort((a, b) => {
-      // 未定义牌组置顶
-      if (a.deckName === '未定义') return -1;
-      if (b.deckName === '未定义') return 1;
       // 其他按照优先级降序排列
       return b.medianPriority - a.medianPriority;
     });
@@ -44,7 +40,7 @@ const DeckPriorityManager = ({
 
   const handleSave = () => {
     if (editingDeck) {
-      updateDeckPriority(editingDeck, tempPriority);
+      console.log(`牌组 ${editingDeck} 的优先级意图调整为 ${tempPriority}`);
       setEditingDeck(null);
     }
   };
@@ -61,87 +57,85 @@ const DeckPriorityManager = ({
       style={{ width: '600px' }}
     >
       <DialogContent className="bp3-dialog-body">
-        <Blueprint.HTMLTable className="bp3-html-table bp3-html-table-striped" style={{ width: '100%' }}>
-          <thead>
-            <tr>
-              <th>牌组名称</th>
-              <th>卡片数量</th>
-              <th>中位数优先级</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedDecks.map((deck) => (
-              <tr key={deck.deckName} className={selectedDeck === deck.deckName ? 'selected' : ''}>
-                <td>
-                  <DeckName>
-                    {deck.deckName === '未定义' && (
-                      <Blueprint.Icon icon="inbox" size={14} style={{ marginRight: '4px' }} />
-                    )}
-                    {deck.deckName}
-                  </DeckName>
-                </td>
-                <td>{deck.cardCount}</td>
-                <td>
-                  {editingDeck === deck.deckName ? (
-                    <PriorityEditor>
-                      <Blueprint.InputGroup
-                        type="number"
-                        value={tempPriority}
-                        onChange={(e) => setTempPriority(Number(e.target.value))}
-                        min={0}
-                        max={100}
-                        style={{ width: '80px' }}
-                      />
-                      <span style={{ margin: '0 8px' }}>%</span>
-                    </PriorityEditor>
-                  ) : (
-                    <PriorityDisplay>
-                      <PriorityBar priority={deck.medianPriority} />
-                      <span>{deck.medianPriority}%</span>
-                    </PriorityDisplay>
-                  )}
-                </td>
-                <td>
-                  {editingDeck === deck.deckName ? (
-                    <Blueprint.ButtonGroup>
-                      <Blueprint.Button
-                        icon="tick"
-                        intent="success"
-                        small
-                        onClick={handleSave}
-                      />
-                      <Blueprint.Button
-                        icon="cross"
-                        intent="danger"
-                        small
-                        onClick={handleCancel}
-                      />
-                    </Blueprint.ButtonGroup>
-                  ) : (
-                    <Tooltip content="调整牌组内所有卡片的优先级">
-                      <Blueprint.Button
-                        icon="edit"
-                        small
-                        onClick={() => handleEditClick(deck)}
-                        disabled={deck.cardCount === 0}
-                      />
-                    </Tooltip>
-                  )}
-                </td>
+        {Object.keys(deckPriorities).length === 0 ? (
+          <SpinnerContainer>
+            <Blueprint.Spinner />
+          </SpinnerContainer>
+        ) : (
+          <Blueprint.HTMLTable className="bp3-html-table bp3-html-table-striped" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>牌组名称</th>
+                <th>卡片数量</th>
+                <th>中位数优先级</th>
+                <th>操作</th>
               </tr>
-            ))}
-          </tbody>
-        </Blueprint.HTMLTable>
+            </thead>
+            <tbody>
+              {sortedDecks.map((deck) => (
+                <tr key={deck.deckName} className={selectedDeck === deck.deckName ? 'selected' : ''}>
+                  <td>
+                    <DeckName>
+                      {deck.deckName}
+                    </DeckName>
+                  </td>
+                  <td>{deck.cardCount}</td>
+                  <td>
+                    {editingDeck === deck.deckName ? (
+                      <PriorityEditor>
+                        <OffsetSlider 
+                          initialPriority={deck.medianPriority}
+                          onPriorityChange={setTempPriority}
+                        />
+                      </PriorityEditor>
+                    ) : (
+                      <PriorityDisplay>
+                        <PriorityBar priority={deck.medianPriority} />
+                        <span>{deck.medianPriority}%</span>
+                      </PriorityDisplay>
+                    )}
+                  </td>
+                  <td>
+                    {editingDeck === deck.deckName ? (
+                      <Blueprint.ButtonGroup>
+                        <Blueprint.Button
+                          icon="tick"
+                          intent="success"
+                          small
+                          onClick={handleSave}
+                        />
+                        <Blueprint.Button
+                          icon="cross"
+                          intent="danger"
+                          small
+                          onClick={handleCancel}
+                        />
+                      </Blueprint.ButtonGroup>
+                    ) : (
+                      <Tooltip content="调整牌组内所有卡片的优先级">
+                        <Blueprint.Button
+                          icon="edit"
+                          small
+                          onClick={() => handleEditClick(deck)}
+                          disabled={deck.cardCount === 0}
+                        />
+                      </Tooltip>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Blueprint.HTMLTable>
+        )}
         
         <InfoSection>
           <Blueprint.Callout intent="primary" icon="info-sign">
             <h4>牌组优先级说明</h4>
             <ul>
-              <li>每个牌组的优先级是其所有卡片优先级的中位数</li>
-              <li>调整牌组优先级会按比例调整该牌组内所有卡片的优先级</li>
-              <li>优先级越高，卡片在混合学习队列中越靠前</li>
-              <li>"未定义"牌组包含仅存在于每日笔记中的卡片</li>
+              <li>每个牌组的优先级是其所有卡片优先级的中位数。</li>
+              <li>在编辑模式下，使用滑块设置一个**偏移量**（-50% 至 +50%）。</li>
+              <li>保存后，该牌组内所有卡片的优先级将按此偏移量进行批量调整。</li>
+              <li>优先级越高，卡片在混合学习队列中越靠前。</li>
             </ul>
           </Blueprint.Callout>
         </InfoSection>
@@ -208,6 +202,13 @@ const PriorityEditor = styled.div`
 
 const InfoSection = styled.div`
   margin-top: 20px;
+`;
+
+const SpinnerContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
 `;
 
 export default DeckPriorityManager; 

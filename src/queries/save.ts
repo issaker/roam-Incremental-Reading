@@ -340,9 +340,31 @@ export const saveCardRankings = async ({
 };
 
 // 🎯 获取卡片的当前排名
-export const getCardRank = (cardUid: string, rankings: string[]): number => {
-  const index = rankings.indexOf(cardUid);
-  return index === -1 ? rankings.length + 1 : index + 1; // 排名从1开始
+export const getCardRank = ({
+  refUid,
+  priorityOrder,
+  allCardsCount,
+  defaultPriority,
+}: {
+  refUid: string;
+  priorityOrder: string[];
+  allCardsCount: number;
+  defaultPriority: number;
+}): number => {
+  // ✅ 防御性编程：确保priorityOrder是一个数组
+  if (!priorityOrder || priorityOrder.length === 0) {
+    // 如果排名列表为空，则根据默认优先级估算一个排名
+    return Math.max(1, Math.ceil(allCardsCount * (1 - defaultPriority / 100)));
+  }
+  
+  const index = priorityOrder.indexOf(refUid);
+  
+  // 如果卡片不在排名列表中（新卡片），则根据默认优先级估算
+  if (index === -1) {
+    return Math.max(1, Math.ceil(allCardsCount * (1 - defaultPriority / 100)));
+  }
+  
+  return index + 1; // 排名从1开始
 };
 
 // 🎯 批量保存排名变更（协同处理）
@@ -358,72 +380,47 @@ export const bulkSaveRankingChanges = async ({
   try {
     // ✅ 参数验证
     if (!rankingChanges || Object.keys(rankingChanges).length === 0) {
-      console.log('🎯 协同排名系统 - 无变更需要保存');
       return;
     }
-
-    if (!dataPageTitle?.trim()) {
-      throw new Error('dataPageTitle不能为空');
+    if (!dataPageTitle?.trim() || !allCardUids?.length) {
+      throw new Error('dataPageTitle 或 allCardUids 不能为空');
     }
 
-    if (!allCardUids || allCardUids.length === 0) {
-      throw new Error('allCardUids不能为空');
-    }
+    console.log(`🎯 协同排名系统 - 开始批量保存排名变更: ${Object.keys(rankingChanges).length} 个变更`);
 
-    console.log('🎯 协同排名系统 - 开始批量保存排名变更:', Object.keys(rankingChanges).length, '个变更');
-
-    // ✅ 验证排名变更的合理性
-    for (const [cardUid, targetRank] of Object.entries(rankingChanges)) {
-      if (!allCardUids.includes(cardUid)) {
-        console.warn('🎯 协同排名系统 - 警告: 卡片不在allCardUids中:', cardUid);
-      }
-      if (targetRank < 1 || targetRank > allCardUids.length) {
-        throw new Error(`卡片 ${cardUid} 的目标排名 ${targetRank} 超出有效范围 1-${allCardUids.length}`);
-      }
-    }
-
+    // 1. 加载当前排名
     let currentRankings = await loadCardRankings({ dataPageTitle });
+    // 如果没有排名，则使用所有卡片的列表作为基础
     if (currentRankings.length === 0) {
-      console.log('🎯 协同排名系统 - 初始化排名列表');
       currentRankings = [...allCardUids];
     }
     
-    // ✅ 创建副本以保证原子性
-    let newRankings = [...currentRankings];
-    
-    // 处理每个变更（按照目标排名从小到大处理，确保正确性）
+    // 2. 创建一个已变更卡片的Set，用于O(1)复杂度的快速查找
+    const changedUids = new Set(Object.keys(rankingChanges));
+
+    // 3. 创建一个只包含未变更卡片的稳定列表，保持其原有相对顺序
+    const unchangedCards = currentRankings.filter(uid => !changedUids.has(uid));
+
+    // 4. 将变更按目标排名排序，然后将它们插入到稳定列表中
     const sortedChanges = Object.entries(rankingChanges).sort(([,a], [,b]) => a - b);
     
-    console.log('🎯 协同排名系统 - 处理排序变更:', sortedChanges);
-    
+    let newRankings = unchangedCards;
     for (const [cardUid, targetRank] of sortedChanges) {
-      // ✅ 验证卡片存在
-      const currentIndex = newRankings.indexOf(cardUid);
-      if (currentIndex === -1) {
-        console.warn('🎯 协同排名系统 - 卡片不在当前排名中，添加到末尾:', cardUid);
-        newRankings.push(cardUid);
-      }
-      
-      // 移除卡片的当前位置
-      newRankings = newRankings.filter(uid => uid !== cardUid);
-      
-      // 插入到新位置
+      // 确保目标排名在有效范围内
       const insertIndex = Math.max(0, Math.min(targetRank - 1, newRankings.length));
       newRankings.splice(insertIndex, 0, cardUid);
-      
-      console.log('🎯 协同排名系统 - 移动卡片', cardUid, '到位置', targetRank, '(索引', insertIndex, ')');
     }
     
     // ✅ 验证结果的完整性
-    const uniqueCards = new Set(newRankings);
-    if (uniqueCards.size !== newRankings.length) {
+    if (new Set(newRankings).size !== newRankings.length) {
+      console.error("排名列表包含重复卡片，保存操作已中止。");
       throw new Error('排名列表包含重复卡片');
     }
 
     // ✅ 原子性保存
     await saveCardRankings({ dataPageTitle, rankings: newRankings });
     
-    console.log('🎯 协同排名系统 - 批量保存排名变更完成，最终排序:', newRankings.length, '个卡片');
+    console.log(`🎯 协同排名系统 - 批量保存排名变更完成: ${newRankings.length} 个卡片`);
   } catch (error) {
     console.error('🎯 协同排名系统 - 批量保存排名变更失败:', error);
     

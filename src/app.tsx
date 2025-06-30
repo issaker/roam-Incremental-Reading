@@ -4,7 +4,6 @@ import PracticeOverlay from '~/components/overlay/PracticeOverlay';
 import SidePannelWidget from '~/components/SidePanelWidget';
 import practice from '~/practice';
 import usePracticeData from '~/hooks/usePracticeData';
-import useTags from '~/hooks/useTags';
 import useSettings from '~/hooks/useSettings';
 import useCollapseReferenceList from '~/hooks/useCollapseReferenceList';
 import useOnBlockInteract from '~/hooks/useOnBlockInteract';
@@ -12,6 +11,7 @@ import useCommandPaletteAction from '~/hooks/useCommandPaletteAction';
 import useCachedData from '~/hooks/useCachedData';
 import useOnVisibilityStateChange from '~/hooks/useOnVisibilityStateChange';
 import useAllPages from '~/hooks/useAllPages';
+import useDeckPriority from '~/hooks/useDeckPriority';
 import { IntervalMultiplierType, ReviewModes } from '~/models/session';
 import { RenderMode } from '~/models/practice';
 
@@ -26,13 +26,13 @@ export interface handlePracticeProps {
 const App = () => {
   const [showPracticeOverlay, setShowPracticeOverlay] = React.useState(false);
   const [isCramming, setIsCramming] = React.useState(false);
+  const [selectedTag, setSelectedTag] = React.useState<string>('');
 
-  const { tagsListString, dataPageTitle, dailyLimit, rtlEnabled, shuffleCards, defaultPriority, fsrsEnabled } = useSettings();
-  const { selectedTag, setSelectedTag, tagsList: configuredTags } = useTags({ tagsListString });
+  const [settings, setSettings] = useSettings();
+  const { dataPageTitle, dailyLimit, rtlEnabled, shuffleCards, defaultPriority, fsrsEnabled, isGlobalMixedMode } = settings;
   
-  // 使用 useAllPages 获取所有页面
+  // 使用 useAllPages 获取所有页面作为牌组
   const { allPages: tagsList, isLoading: pagesLoading, refreshPages } = useAllPages({ 
-    tagsList: configuredTags, 
     dataPageTitle 
   });
 
@@ -44,8 +44,9 @@ const App = () => {
   }, [selectedTag, tagsList]);
 
   // 当safeSelectedTag改变时，同步更新selectedTag
+  // 并处理 tagsList 第一次加载后的情况
   React.useEffect(() => {
-    if (safeSelectedTag && safeSelectedTag !== selectedTag) {
+    if (safeSelectedTag && (safeSelectedTag !== selectedTag || !selectedTag)) {
       setSelectedTag(safeSelectedTag);
     }
   }, [safeSelectedTag, selectedTag, setSelectedTag]);
@@ -62,6 +63,32 @@ const App = () => {
     shuffleCards,
     defaultPriority,
   });
+
+  const { deckPriorities, isLoading: deckPrioritiesLoading } = useDeckPriority({
+    tagsList,
+    cardUids,
+    priorityOrder,
+    allCardsCount,
+    defaultPriority,
+  });
+
+  const handleSetIsGlobalMixedMode = (mode: boolean) => {
+    setSettings(s => ({ ...s, isGlobalMixedMode: mode }));
+    window.roamMemo.extensionAPI.settings.set('isGlobalMixedMode', mode);
+  };
+
+  // 根据牌组优先级排序
+  const sortedTagsList = React.useMemo(() => {
+    if (!tagsList || tagsList.length === 0 || Object.keys(deckPriorities).length === 0) {
+      return tagsList;
+    }
+
+    return [...tagsList].sort((a, b) => {
+      const priorityA = deckPriorities[a]?.medianPriority ?? defaultPriority;
+      const priorityB = deckPriorities[b]?.medianPriority ?? defaultPriority;
+      return priorityB - priorityA; // 降序排列
+    });
+  }, [tagsList, deckPriorities, defaultPriority]);
 
   const handlePracticeClick = async ({ refUid, ...cardData }: handlePracticeProps) => {
     if (!refUid) {
@@ -158,7 +185,7 @@ const App = () => {
             practiceData={practiceData}
             today={today}
             handlePracticeClick={handlePracticeClick}
-            tagsList={tagsList}
+            tagsList={sortedTagsList}
             selectedTag={safeSelectedTag}
             handleMemoTagChange={setSelectedTag}
             handleReviewMoreClick={() => {}}
@@ -172,8 +199,11 @@ const App = () => {
             priorityOrder={priorityOrder}
             allCardUids={allCardUids}
             cardUids={cardUids}
+            deckPriorities={deckPriorities}
             defaultPriority={defaultPriority}
             fsrsEnabled={fsrsEnabled}
+            isGlobalMixedMode={isGlobalMixedMode}
+            setIsGlobalMixedMode={handleSetIsGlobalMixedMode}
           />
         )}
       </>

@@ -16,23 +16,9 @@ const settingsPanelConfig = ({ settings, setSettings }) => {
     tabTitle: 'Memo Enhanced',
     settings: [
       {
-        id: 'tagsListString',
-        name: 'Tag Pages (aka Decks)',
-        description:
-          'Separate multiple decks with commas. Example: "memo, sr, 🐘, french exam, fun facts"',
-        action: {
-          type: 'input',
-          placeholder: defaultSettings.tagsListString,
-          onChange: (e) => {
-            const tagsListString = e.target.value.trim();
-            processChange({ key: 'tagsListString', value: tagsListString });
-          },
-        },
-      },
-      {
         id: 'fsrsEnabled',
         name: 'Enable FSRS Algorithm/启用FSRS算法',
-        description: 'Enable the modern FSRS algorithm instead of SM2. FSRS provides better long-term retention prediction. \n你可以开启FSRS提供机器学习训练的高级算法。默认SM2 经典算法，让学习压力更小。',
+        description: 'Enable the modern FSRS algorithm instead of SM2. FSRS provides better long-term retention prediction. \n默认启用更先进的FSRS算法，提供基于机器学习的记忆预测。若想切换回经典的SM2算法，可关闭此开关。',
         action: {
           type: 'switch',
           checked: settings.fsrsEnabled,

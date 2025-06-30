@@ -11,7 +11,7 @@ import {
   initializeToday,
   restoreCompletedUids,
 } from '~/queries/today';
-import { getChildBlocksOnPage } from './utils';
+import { getChildBlocksOnPage, getPageUidsFromTitles } from './utils';
 // 🎯 FIXED: 直接导入协同排名系统函数，避免动态导入问题
 import { loadCardRankings, saveCardRankings } from '~/queries/save';
 
@@ -62,7 +62,7 @@ export const getPracticeData = async ({
     sessionData[tag] = currentSessionData;
     cardUids[tag] = currentCardUids;
   }
-
+  
   // 计算所有tagged的卡片
   const allCardUids = new Set<string>();
   for (const tag of tagsList) {
@@ -91,7 +91,7 @@ export const getPracticeData = async ({
     shuffleCards,
     priorityOrder,
   });
-
+  
   calculateCombinedCounts({ today, tagsList });
   limitRemainingPracticeData({ today, dailyLimit, tagsList, isCramming });
   calculateCombinedCounts({ today, tagsList });

@@ -268,3 +268,37 @@ export const generateNewSession = ({
     reviewMode,
   };
 };
+
+// 🚀 NEW: 根据页面标题批量获取UID
+export const getPageUidsFromTitles = (titles: string[]): string[] => {
+  if (!titles || titles.length === 0) {
+    return [];
+  }
+  
+  const query = `[
+    :find [?uid ...]
+    :in $ [?title ...]
+    :where
+      [?page :node/title ?title]
+      [?page :block/uid ?uid]
+  ]`;
+  try {
+    const results = window.roamAlphaAPI.q(query, titles);
+    return results || [];
+  } catch (e) {
+    console.error("Error in getPageUidsFromTitles:", e);
+    return [];
+  }
+};
+
+/**
+ * Gets all the child blocks on a page
+ * @param {string} pageName - The name of the page to get the blocks from
+ */
+// export const getChildBlocksOnPage = async (pageName: string) => {
+//   const queryResults = await window.roamAlphaAPI.q(childBlocksOnPageQuery, pageName);
+
+//   if (!queryResults.length) return [];
+
+//   return queryResults;
+// };
