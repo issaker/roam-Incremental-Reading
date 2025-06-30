@@ -118,9 +118,6 @@ const updatePriorityOrderWithSettings = async (
   const now = Date.now();
   
   if (pageState.isInProgress || (now - pageState.lastTime) < pageState.debounceMs) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 [排序更新] 跳过更新 - 防抖或正在处理中:', dataPageTitle);
-    }
     return;
   }
 
@@ -135,16 +132,9 @@ const updatePriorityOrderWithSettings = async (
     const missingCards = Array.from(allCardUids).filter(uid => !existingPriorityOrder.includes(uid));
     
     if (missingCards.length === 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🎯 [排序更新] 无新卡片，无需更新');
-      }
       return;
     }
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 [排序更新] 发现新卡片:', missingCards, '当前defaultPriority:', defaultPriority);
-    }
-    
     // 3. 新卡片倒序进入排名列表
     const reversedMissingCards = [...missingCards].reverse();
     
@@ -156,19 +146,12 @@ const updatePriorityOrderWithSettings = async (
     const updatedPriorityOrder = [...existingPriorityOrder];
     updatedPriorityOrder.splice(insertPosition, 0, ...reversedMissingCards);
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 [排序更新] 插入位置:', insertPosition, '更新后排序:', updatedPriorityOrder);
-    }
-    
     // 6. 保存更新后的排序列表
     await saveCardRankings({ 
       dataPageTitle, 
       rankings: updatedPriorityOrder 
     });
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🎯 [排序更新] 排序列表已保存');
-    }
   } catch (error) {
     console.error('🎯 [排序更新] 更新失败:', error);
     // ✅ 重置状态以允许重试

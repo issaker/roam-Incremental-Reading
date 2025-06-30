@@ -97,6 +97,11 @@ const PracticeOverlay = ({
   isGlobalMixedMode,
   setIsGlobalMixedMode,
 }: Props) => {
+  // 🚀 PERF: 创建一个rankMap用于快速查找卡片排名，避免在排序中使用O(N)的indexOf操作
+  const rankMap = React.useMemo(() => {
+    return new Map(priorityOrder.map((uid, i) => [uid, i]));
+  }, [priorityOrder]);
+
   const todaySelectedTag = today.tags[selectedTag] || { completed: 0, dueUids: [], newUids: [] };
   const completedTodayCount = todaySelectedTag.completed;
   
@@ -118,19 +123,19 @@ const PracticeOverlay = ({
     }
     
     // 按全局优先级排序
-    if (priorityOrder.length > 0) {
+    if (rankMap.size > 0) {
       return cardUidsToPractice.sort((a, b) => {
-        const aIndex = priorityOrder.indexOf(a);
-        const bIndex = priorityOrder.indexOf(b);
-        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-        if (aIndex !== -1) return -1;
-        if (bIndex !== -1) return 1;
+        const aRank = rankMap.get(a);
+        const bRank = rankMap.get(b);
+        if (aRank !== undefined && bRank !== undefined) return aRank - bRank;
+        if (aRank !== undefined) return -1;
+        if (bRank !== undefined) return 1;
         return 0;
       });
     }
     
     return cardUidsToPractice;
-  }, [isGlobalMixedMode, tagsList, today.tags, todaySelectedTag.dueUids, todaySelectedTag.newUids, priorityOrder]);
+  }, [isGlobalMixedMode, tagsList, today.tags, todaySelectedTag.dueUids, todaySelectedTag.newUids, rankMap]);
 
   const renderMode = todaySelectedTag.renderMode;
 
@@ -377,9 +382,6 @@ const PracticeOverlay = ({
         // ✅ 参数验证
         const validDataPageTitle = dataPageTitle?.trim() || 'roam/memo';
         if (!allCardUids || allCardUids.length === 0) {
-          console.warn('🎯 优先级保存跳过: allCardUids为空');
-          setRankingChanges({});
-          setHasUnsavedChanges(false);
           return;
         }
 
@@ -390,17 +392,14 @@ const PracticeOverlay = ({
         }).then(() => {
           // ✅ 检查组件是否已卸载
           if (!isMountedRef.current) {
-            console.log('🎯 组件已卸载，跳过状态更新');
             return;
           }
           
-          console.log('🎯 优先级保存成功');
           setRankingChanges({}); // 成功后再清除
           setHasUnsavedChanges(false);
         }).catch(error => {
           // ✅ 检查组件是否已卸载
           if (!isMountedRef.current) {
-            console.log('🎯 组件已卸载，跳过错误处理');
             return;
           }
           
@@ -414,9 +413,6 @@ const PracticeOverlay = ({
               timeout: 5000
             });
           }
-          
-          // ✅ 不清除rankingChanges，保留用户修改供下次重试
-          // setRankingChanges({});  // 注释掉，保留数据
         });
       }
     }
@@ -424,24 +420,21 @@ const PracticeOverlay = ({
     prevShouldShowSlider.current = shouldShowSlider;
   }, [shouldShowSlider, rankingChanges, dataPageTitle, allCardUids]); // ✅ 添加allCardUids到依赖
 
-  // 计算显示进度
+  // 🚀 CLEANUP: 移除本地计算的 globalStats，改用来自 usePracticeData 的 today.combinedToday，它是经过后端去重处理的唯一数据源
   const queueLength = practiceCardUids ? practiceCardUids.length : 0;
   const todayTotalTarget = isCramming 
     ? queueLength 
     : isGlobalMixedMode
-    ? globalStats
-      ? globalStats.totalCompleted + queueLength
-      : 0
+    ? today.combinedToday.completed + queueLength
     : completedTodayCount + queueLength;
   const currentDisplayCount = isCramming 
     ? currentIndex + 1 
     : isGlobalMixedMode
-    ? globalStats
-      ? globalStats.totalCompleted + currentIndex + 1
-      : 0
+    ? today.combinedToday.completed + currentIndex + 1
     : completedTodayCount + currentIndex + 1;
 
-  // 🚀 计算全局混合模式下的统计数据
+  // 🚀 计算全局混合模式下的统计数据 - 此部分已被移除，因为逻辑已移至 today.ts
+  /*
   const globalStats = React.useMemo(() => {
     if (!isGlobalMixedMode) return null;
 
@@ -460,6 +453,7 @@ const PracticeOverlay = ({
 
     return { totalDue, totalNew, totalCompleted };
   }, [isGlobalMixedMode, tagsList, today.tags]);
+  */
 
   return (
     <MainContext.Provider
@@ -935,25 +929,8 @@ const Header = ({
   };
   const completedTodayCount = todaySelectedTag.completed;
   
-  // 🚀 计算全局混合模式下的统计数据
-  const globalStats = React.useMemo(() => {
-    if (!isGlobalMixedMode) return null;
-
-    let totalDue = 0;
-    let totalNew = 0;
-    let totalCompleted = 0;
-
-    for (const tag of tagsList) {
-      const tagData = today.tags[tag];
-      if (tagData) {
-        totalDue += tagData.due || 0;
-        totalNew += tagData.new || 0;
-        totalCompleted += tagData.completed || 0;
-      }
-    }
-
-    return { totalDue, totalNew, totalCompleted };
-  }, [isGlobalMixedMode, tagsList, today.tags]);
+  // 🚀 REFACTOR: 不再使用本地计算的globalStats，改用来自后端的 today.combinedToday
+  const globalStats = isGlobalMixedMode ? today.combinedToday : null;
 
   // 计算显示进度
   const queueLength = practiceCardUids ? practiceCardUids.length : 0;
@@ -961,14 +938,14 @@ const Header = ({
     ? queueLength
     : isGlobalMixedMode
     ? globalStats
-      ? globalStats.totalCompleted + queueLength
+      ? globalStats.completed + queueLength
       : 0
     : completedTodayCount + queueLength;
   const currentDisplayCount = isCramming
     ? currentIndex + 1
     : isGlobalMixedMode
     ? globalStats
-      ? globalStats.totalCompleted + currentIndex + 1
+      ? globalStats.completed + currentIndex + 1
       : 0
     : completedTodayCount + currentIndex + 1;
 
@@ -1010,14 +987,7 @@ const Header = ({
       </div>
       
       <div className="flex items-center justify-end">
-        {/* 🚀 新增：全局混合模式状态提示 */}
-        {isGlobalMixedMode && globalStats && (
-          <Tooltip content={`待复习: ${globalStats.totalDue}, 新卡片: ${globalStats.totalNew}`}>
-            <div className="mr-2 text-xs text-gray-600">
-              全局: {globalStats.totalDue + globalStats.totalNew} 待学
-            </div>
-          </Tooltip>
-        )}
+        {/* 🚀 REMOVED: 根据用户反馈，移除全局状态提示，简化UI */}
 
         {/* 牌组优先级管理按钮 */}
         {onOpenDeckPriority && (

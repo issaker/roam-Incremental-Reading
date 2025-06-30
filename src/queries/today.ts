@@ -124,6 +124,19 @@ export const calculateCombinedCounts = ({ today, tagsList }) => {
       today.tags[tag].completedNewUids
     );
   }
+
+  // 🚀 FIXED: 对合并后的UID列表进行去重，并基于去重后的结果重新计算总数，确保数据一致性
+  today.combinedToday.dueUids = [...new Set(today.combinedToday.dueUids)];
+  today.combinedToday.newUids = [...new Set(today.combinedToday.newUids)];
+  today.combinedToday.completedUids = [...new Set(today.combinedToday.completedUids)];
+  today.combinedToday.completedDueUids = [...new Set(today.combinedToday.completedDueUids)];
+  today.combinedToday.completedNewUids = [...new Set(today.combinedToday.completedNewUids)];
+
+  today.combinedToday.due = today.combinedToday.dueUids.length;
+  today.combinedToday.new = today.combinedToday.newUids.length;
+  today.combinedToday.completed = today.combinedToday.completedUids.length;
+  today.combinedToday.completedDue = today.combinedToday.completedDueUids.length;
+  today.combinedToday.completedNew = today.combinedToday.completedNewUids.length;
 };
 
 /**
@@ -144,6 +157,9 @@ export const addNewCards = ({
   shuffleCards: boolean;
   priorityOrder?: string[];
 }) => {
+  // 🚀 PERF: 预先构建rankMap以加速排序
+  const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i]));
+
   for (const currentTag of tagsList) {
     const allSelectedTagCardsUids = cardUids[currentTag];
     const newCardsUids: RecordUid[] = [];
@@ -157,24 +173,20 @@ export const addNewCards = ({
     });
 
     // 🚀 FIXED: 按priorityOrder排序新卡片，与due卡片保持一致
-    if (priorityOrder.length > 0 && !shuffleCards) {
+    if (rankMap.size > 0 && !shuffleCards) {
       newCardsUids.sort((a, b) => {
-        const aIndex = priorityOrder.indexOf(a as string);
-        const bIndex = priorityOrder.indexOf(b as string);
+        const aRank = rankMap.get(a as string);
+        const bRank = rankMap.get(b as string);
         
-        if (aIndex !== -1 && bIndex !== -1) {
-          return aIndex - bIndex;
+        if (aRank !== undefined && bRank !== undefined) {
+          return aRank - bRank;
         }
         
-        if (aIndex !== -1) return -1;
-        if (bIndex !== -1) return 1;
+        if (aRank !== undefined) return -1;
+        if (bRank !== undefined) return 1;
         
         return 0;
       });
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🎯 [新卡排序] 按priorityOrder排序后:', newCardsUids);
-      }
     } 
     // Shuffle cards if necessary in the most efficient way possible
     else if (shuffleCards) {
@@ -193,6 +205,9 @@ export const getDueCardUids = (currentTagSessionData: CompleteRecords, isCrammin
   const results: RecordUid[] = [];
   if (!Object.keys(currentTagSessionData).length) return results;
 
+  // 🚀 PERF: 预先构建rankMap以加速排序
+  const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i]));
+
   const now = new Date();
   Object.keys(currentTagSessionData).forEach((cardUid) => {
     const cardData = currentTagSessionData[cardUid] as Session[];
@@ -208,17 +223,17 @@ export const getDueCardUids = (currentTagSessionData: CompleteRecords, isCrammin
   });
 
   // 按排名列表进行排序
-  if (priorityOrder.length > 0) {
+  if (rankMap.size > 0) {
     results.sort((a, b) => {
-      const aIndex = priorityOrder.indexOf(a as string);
-      const bIndex = priorityOrder.indexOf(b as string);
+      const aRank = rankMap.get(a as string);
+      const bRank = rankMap.get(b as string);
       
-      if (aIndex !== -1 && bIndex !== -1) {
-        return aIndex - bIndex;
+      if (aRank !== undefined && bRank !== undefined) {
+        return aRank - bRank;
       }
       
-      if (aIndex !== -1) return -1;
-      if (bIndex !== -1) return 1;
+      if (aRank !== undefined) return -1;
+      if (bRank !== undefined) return 1;
       
       return 0;
     });
