@@ -157,9 +157,7 @@ export const addNewCards = ({
   shuffleCards: boolean;
   priorityOrder?: string[];
 }) => {
-  // 🚀 PERF: 预先构建rankMap以加速排序
-  const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i]));
-
+  const rankMap = createRankMap(priorityOrder);
   for (const currentTag of tagsList) {
     const allSelectedTagCardsUids = cardUids[currentTag];
     const newCardsUids: RecordUid[] = [];
@@ -172,24 +170,10 @@ export const addNewCards = ({
       }
     });
 
-    // 🚀 FIXED: 按priorityOrder排序新卡片，与due卡片保持一致
-    if (rankMap.size > 0 && !shuffleCards) {
-      newCardsUids.sort((a, b) => {
-        const aRank = rankMap.get(a as string);
-        const bRank = rankMap.get(b as string);
-        
-        if (aRank !== undefined && bRank !== undefined) {
-          return aRank - bRank;
-        }
-        
-        if (aRank !== undefined) return -1;
-        if (bRank !== undefined) return 1;
-        
-        return 0;
-      });
-    } 
-    // Shuffle cards if necessary in the most efficient way possible
-    else if (shuffleCards) {
+    if (rankMap && !shuffleCards) {
+      const getRank = (uid: string) => rankMap.get(uid) ?? Number.MAX_SAFE_INTEGER;
+      newCardsUids.sort((a, b) => getRank(a) - getRank(b));
+    } else if (shuffleCards) {
       newCardsUids.sort(() => Math.random() - 0.5);
     }
 
@@ -201,12 +185,18 @@ export const addNewCards = ({
   }
 };
 
+const createRankMap = (priorityOrder: string[]): Map<string, number> | null => {
+  if (!priorityOrder || priorityOrder.length === 0) return null;
+  const m = new Map<string, number>();
+  priorityOrder.forEach((uid, i) => m.set(uid, i));
+  return m;
+};
+
 export const getDueCardUids = (currentTagSessionData: CompleteRecords, isCramming, priorityOrder: string[] = []) => {
   const results: RecordUid[] = [];
   if (!Object.keys(currentTagSessionData).length) return results;
 
-  // 🚀 PERF: 预先构建rankMap以加速排序
-  const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i]));
+  const rankMap = createRankMap(priorityOrder);
 
   const now = new Date();
   Object.keys(currentTagSessionData).forEach((cardUid) => {
@@ -223,32 +213,25 @@ export const getDueCardUids = (currentTagSessionData: CompleteRecords, isCrammin
   });
 
   // 按排名列表进行排序
-  if (rankMap.size > 0) {
-    results.sort((a, b) => {
-      const aRank = rankMap.get(a as string);
-      const bRank = rankMap.get(b as string);
-      
-      if (aRank !== undefined && bRank !== undefined) {
-        return aRank - bRank;
-      }
-      
-      if (aRank !== undefined) return -1;
-      if (bRank !== undefined) return 1;
-      
-      return 0;
-    });
+  if (rankMap) {
+    const getRank = (uid: string) => rankMap.get(uid) ?? Number.MAX_SAFE_INTEGER;
+    results.sort((a, b) => getRank(a) - getRank(b));
   }
 
   return results;
 };
 
 export const addDueCards = ({ today, tagsList, sessionData, isCramming, shuffleCards, priorityOrder = [] }) => {
+  const rankMap = createRankMap(priorityOrder);
   for (const currentTag of tagsList) {
     const currentTagSessionData = sessionData[currentTag];
     const dueCardsUids = getDueCardUids(currentTagSessionData, isCramming, priorityOrder);
 
     if (shuffleCards) {
       dueCardsUids.sort(() => Math.random() - 0.5);
+    } else if (rankMap) {
+      const getRank = (uid: string) => rankMap.get(uid) ?? Number.MAX_SAFE_INTEGER;
+      dueCardsUids.sort((a, b) => getRank(a) - getRank(b));
     }
 
     today.tags[currentTag] = {

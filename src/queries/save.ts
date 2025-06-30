@@ -395,6 +395,14 @@ export const bulkSaveRankingChanges = async ({
       currentRankings = [...allCardUids];
     }
     
+    // 🚑 热修: 去重当前排名列表，保留首次出现的顺序，避免后续插入时报"包含重复卡片"错误
+    const seen = new Set<string>();
+    currentRankings = currentRankings.filter(uid => {
+      if (seen.has(uid)) return false;
+      seen.add(uid);
+      return true;
+    });
+
     // 2. 创建一个已变更卡片的Set，用于O(1)复杂度的快速查找
     const changedUids = new Set(Object.keys(rankingChanges));
 

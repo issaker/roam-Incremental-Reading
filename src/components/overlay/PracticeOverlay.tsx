@@ -97,11 +97,6 @@ const PracticeOverlay = ({
   isGlobalMixedMode,
   setIsGlobalMixedMode,
 }: Props) => {
-  // 🚀 PERF: 创建一个rankMap用于快速查找卡片排名，避免在排序中使用O(N)的indexOf操作
-  const rankMap = React.useMemo(() => {
-    return new Map(priorityOrder.map((uid, i) => [uid, i]));
-  }, [priorityOrder]);
-
   const todaySelectedTag = today.tags[selectedTag] || { completed: 0, dueUids: [], newUids: [] };
   const completedTodayCount = todaySelectedTag.completed;
   
@@ -123,19 +118,14 @@ const PracticeOverlay = ({
     }
     
     // 按全局优先级排序
-    if (rankMap.size > 0) {
-      return cardUidsToPractice.sort((a, b) => {
-        const aRank = rankMap.get(a);
-        const bRank = rankMap.get(b);
-        if (aRank !== undefined && bRank !== undefined) return aRank - bRank;
-        if (aRank !== undefined) return -1;
-        if (bRank !== undefined) return 1;
-        return 0;
-      });
+    if (priorityOrder.length > 0) {
+      const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i]));
+      const getRank = (uid: string) => rankMap.get(uid) ?? Number.MAX_SAFE_INTEGER;
+      return cardUidsToPractice.sort((a, b) => getRank(a) - getRank(b));
     }
     
     return cardUidsToPractice;
-  }, [isGlobalMixedMode, tagsList, today.tags, todaySelectedTag.dueUids, todaySelectedTag.newUids, rankMap]);
+  }, [isGlobalMixedMode, tagsList, today.tags, todaySelectedTag.dueUids, todaySelectedTag.newUids, priorityOrder]);
 
   const renderMode = todaySelectedTag.renderMode;
 
@@ -177,6 +167,60 @@ const PracticeOverlay = ({
   
   // 牌组优先级管理
   const [showDeckPriorityManager, setShowDeckPriorityManager] = React.useState(false);
+  
+  // 🚀 新增：牌组偏移处理函数
+  const handleDeckOffsetApply = React.useCallback(async (deckName: string, offsetPercent: number) => {
+    try {
+      // 1. 获取该牌组的所有卡片UID
+      const deckCardUids = cardUids[deckName] || [];
+      if (deckCardUids.length === 0) {
+        console.warn(`牌组 ${deckName} 没有卡片，跳过偏移操作`);
+        return;
+      }
+
+      // 2. 创建rankMap以便快速查找当前排名
+      const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i + 1]));
+      
+      // 3. 计算每张卡的新排名
+      const rankingChanges: Record<string, number> = {};
+      
+      for (const cardUid of deckCardUids) {
+        const currentRank = rankMap.get(cardUid) || Math.ceil(allCardsCount * (1 - defaultPriority / 100));
+        // 偏移计算：正偏移 = 排名靠前，负偏移 = 排名靠后
+        const targetRank = Math.round(currentRank * (1 - offsetPercent / 100));
+        // 确保排名在有效范围内
+        rankingChanges[cardUid] = Math.max(1, Math.min(allCardsCount, targetRank));
+      }
+
+      // 4. 批量保存排名变更
+      await bulkSaveRankingChanges({
+        rankingChanges,
+        dataPageTitle,
+        allCardUids
+      });
+
+      // 5. 刷新数据以反映新的排名
+      onDataRefresh();
+      
+      // 6. 用户反馈
+      if (window.roamAlphaAPI?.ui?.showToast) {
+        window.roamAlphaAPI.ui.showToast({
+          message: `牌组 "${deckName}" 优先级偏移 ${offsetPercent > 0 ? '+' : ''}${offsetPercent}% 已应用`,
+          intent: 'success',
+          timeout: 3000
+        });
+      }
+    } catch (error) {
+      console.error('牌组偏移应用失败:', error);
+      if (window.roamAlphaAPI?.ui?.showToast) {
+        window.roamAlphaAPI.ui.showToast({
+          message: '牌组优先级偏移应用失败，请重试',
+          intent: 'danger',
+          timeout: 5000
+        });
+      }
+    }
+  }, [cardUids, priorityOrder, allCardsCount, defaultPriority, dataPageTitle, allCardUids, onDataRefresh]);
   
   // ✅ 添加组件卸载标志，防止异步操作在组件卸载后执行
   const isMountedRef = React.useRef(true);
@@ -240,6 +284,14 @@ const PracticeOverlay = ({
   const { blockInfo, isLoading: blockInfoLoading, refreshBlockInfo } = useBlockInfo({ refUid: currentCardRefUid });
   const hasBlockChildren = !!blockInfo.children && !!blockInfo.children.length;
   const hasBlockChildrenUids = !!blockInfo.childrenUids && !!blockInfo.childrenUids.length;
+
+  // 🚀 P1: 预取下一张卡片的 blockInfo，提升用户体验
+  const nextCardRefUid = practiceCardUids[currentIndex + 1];
+  const { blockInfo: nextBlockInfo } = useBlockInfo({ 
+    refUid: nextCardRefUid,
+    // 只在有下一张卡时才预取，避免不必要的请求
+    skip: !nextCardRefUid 
+  });
 
   const [showAnswers, setShowAnswers] = React.useState(false);
   const [hasCloze, setHasCloze] = React.useState(true);
@@ -580,6 +632,7 @@ const PracticeOverlay = ({
         onClose={() => setShowDeckPriorityManager(false)}
         deckPriorities={deckPriorities}
         selectedDeck={selectedTag}
+        onApplyOffset={handleDeckOffsetApply}
       />
     </MainContext.Provider>
   );

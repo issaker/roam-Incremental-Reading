@@ -13,13 +13,17 @@ const usePracticeCardsData = ({
   shuffleCards,
   defaultPriority,
 }) => {
+  // 🚀 P1: 使用 useRef 存储大对象，避免不必要的重渲染
   const practiceDataRef = React.useRef<CompleteRecords>({});
+  const priorityOrderRef = React.useRef<string[]>([]);
+  const allCardUidsRef = React.useRef<string[]>([]);
+  const cardUidsRef = React.useRef<Record<string, string[]>>({});
+  
+  // 🚀 P1: 只在 state 中保存版本号和关键状态，触发重渲染
+  const [dataVersion, setDataVersion] = React.useState(0);
   const [refetchTrigger, setRefetchTrigger] = React.useState(false);
   const [today, setToday] = React.useState<Today>(TodayInitial);
   const [allCardsCount, setAllCardsCount] = React.useState<number>(0);
-  const [priorityOrder, setPriorityOrder] = React.useState<string[]>([]);
-  const [allCardUids, setAllCardUids] = React.useState<string[]>([]);
-  const [cardUids, setCardUids] = React.useState<Record<string, string[]>>({});
 
   const refetchTriggerFn = () => setRefetchTrigger((trigger) => !trigger);
 
@@ -52,12 +56,16 @@ const usePracticeCardsData = ({
           defaultPriority: stableDefaultPriority,
         });
 
-        setToday(todayStats);
+        // 🚀 P1: 更新 Ref 存储的大对象
         practiceDataRef.current = practiceData;
+        priorityOrderRef.current = priorityOrder;
+        allCardUidsRef.current = allCardUids;
+        cardUidsRef.current = cardUids;
+
+        // 🚀 P1: 更新 state 中的关键数据和版本号
+        setToday(todayStats);
         setAllCardsCount(allCardsCount);
-        setPriorityOrder(priorityOrder);
-        setAllCardUids(allCardUids);
-        setCardUids(cardUids);
+        setDataVersion(prev => prev + 1); // 触发组件重渲染
       } catch (error) {
         console.error('📊 [usePracticeData] 数据获取失败:', error);
       } finally {
@@ -77,13 +85,15 @@ const usePracticeCardsData = ({
   ]);
 
   return {
-    practiceData: practiceDataRef.current,
+    // 🚀 P1: 返回 getter 函数而非直接的大对象
+    get practiceData() { return practiceDataRef.current; },
+    get priorityOrder() { return priorityOrderRef.current; },
+    get allCardUids() { return allCardUidsRef.current; },
+    get cardUids() { return cardUidsRef.current; },
     fetchPracticeData: refetchTriggerFn,
     today,
     allCardsCount,
-    priorityOrder,
-    allCardUids,
-    cardUids,
+    dataVersion, // 用于组件决定是否重渲染
   };
 };
 

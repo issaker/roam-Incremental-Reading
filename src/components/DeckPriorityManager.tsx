@@ -15,6 +15,7 @@ interface Props {
   selectedDeck?: string;
   isOpen: boolean;
   onClose: () => void;
+  onApplyOffset: (deckName: string, offsetPercent: number) => Promise<void>;
 }
 
 const DeckPriorityManager = ({
@@ -22,9 +23,12 @@ const DeckPriorityManager = ({
   selectedDeck,
   isOpen,
   onClose,
+  onApplyOffset,
 }: Props) => {
   const [editingDeck, setEditingDeck] = React.useState<string | null>(null);
   const [tempPriority, setTempPriority] = React.useState<number>(50);
+  const [originalPriority, setOriginalPriority] = React.useState<number>(50);
+  const [isApplying, setIsApplying] = React.useState<boolean>(false);
 
   const sortedDecks = React.useMemo(() => {
     return Object.values(deckPriorities).sort((a, b) => {
@@ -36,17 +40,28 @@ const DeckPriorityManager = ({
   const handleEditClick = (deck: DeckPriorityInfo) => {
     setEditingDeck(deck.deckName);
     setTempPriority(deck.medianPriority);
+    setOriginalPriority(deck.medianPriority);
   };
 
-  const handleSave = () => {
-    if (editingDeck) {
-      console.log(`牌组 ${editingDeck} 的优先级意图调整为 ${tempPriority}`);
-      setEditingDeck(null);
+  const handleSave = async () => {
+    if (editingDeck && onApplyOffset) {
+      setIsApplying(true);
+      try {
+        // 计算偏移百分比：tempPriority 是目标优先级，originalPriority 是原始优先级
+        const offsetPercent = ((tempPriority - originalPriority) / originalPriority) * 100;
+        await onApplyOffset(editingDeck, offsetPercent);
+        setEditingDeck(null);
+      } catch (error) {
+        console.error('应用牌组偏移失败:', error);
+      } finally {
+        setIsApplying(false);
+      }
     }
   };
 
   const handleCancel = () => {
     setEditingDeck(null);
+    setIsApplying(false);
   };
 
   return (
@@ -84,7 +99,7 @@ const DeckPriorityManager = ({
                     {editingDeck === deck.deckName ? (
                       <PriorityEditor>
                         <OffsetSlider 
-                          initialPriority={deck.medianPriority}
+                          initialPriority={originalPriority}
                           onPriorityChange={setTempPriority}
                         />
                       </PriorityEditor>
@@ -99,16 +114,18 @@ const DeckPriorityManager = ({
                     {editingDeck === deck.deckName ? (
                       <Blueprint.ButtonGroup>
                         <Blueprint.Button
-                          icon="tick"
+                          icon={isApplying ? <Blueprint.Spinner size={12} /> : "tick"}
                           intent="success"
                           small
                           onClick={handleSave}
+                          disabled={isApplying}
                         />
                         <Blueprint.Button
                           icon="cross"
                           intent="danger"
                           small
                           onClick={handleCancel}
+                          disabled={isApplying}
                         />
                       </Blueprint.ButtonGroup>
                     ) : (
