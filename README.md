@@ -1,186 +1,217 @@
-# Memo Enhanced - 优化版间隔重复插件
+# Memo Enhanced - Roam Research 间隔重复插件
 
-<p align="center">
-  <strong>原版本演示：</strong><br/>
-  <img src="https://user-images.githubusercontent.com/1279335/189250105-656e6ba3-7703-46e6-bc71-ee8c5f3e39ab.gif" alt="原版本演示" width="600">
-</p>
+## 项目概述
 
-<p align="center">
-  <strong>优化版本演示：</strong><br/>
-  <img src="https://github.com/user-attachments/assets/ed9e00c1-558a-4550-8001-1145c8594967" alt="优化版本演示" width="600">
-</p>
+Memo Enhanced 是一个强大的 Roam Research 间隔重复学习插件，实现了 SuperMemo 混合学习效果，支持智能牌组管理、全局优先级系统和渐进式阅读。
 
+## ✨ 核心功能
 
-> 🙏 **致谢**：本项目基于 [digitalmaster/roam-memo](https://github.com/digitalmaster/roam-memo) 开发，感谢原作者 [@digitalmaster](https://github.com/digitalmaster) 的杰出工作！同时特别感谢 [L-M-Sherlock (Jarrett Ye)](https://github.com/L-M-Sherlock) 老师对渐进阅读学习原理和方法的无私推广，受益匪浅。
+### 🔍 智能搜索牌组选择器
+- 支持关键字实时搜索
+- 高亮匹配结果显示
+- 中文搜索支持
+- 快速定位目标牌组
 
-一个专为 Roam Research 设计的强化版间隔重复插件。类似于 [Anki](https://faqs.ankiweb.net/what-spaced-repetition-algorithm.html)，采用科学的记忆算法帮助你高效记忆任何内容。
-y
-## ✨ 新增功能亮点
+### 🤖 自动页面发现系统
+- 自动识别所有 Roam pages 作为牌组
+- 智能排除 Daily Notes
+- 每5分钟自动刷新页面列表
+- 支持中文排序
 
-### 🎯 性能与体验优化
-- **🖱️ 优先级滑块可拖拽** - 重新设计CSS样式，支持所有浏览器的流畅拖拽操作
-- **🔄 全局排名系统** - 统一优先级数据源，让你的知识优先级全局保持一致性，而不仅限于牌组内部。
-- **📊 数据流优化** - 统一使用`priority-ranking::`协同排名列表，数据管理更高效
-- **原插件层级混淆 修复** - Roam-memo 插件会造成层级错误，遮挡点击放大后的 Roam 图片浮窗，遮挡弹出的双链候选菜单。
-- **原插件焦点丢失 修复** - Roam-memo 插件窗口内的换行行为，会导致焦点丢失无法继续编辑内容，现已修复。
+### 📊 牌组优先级管理
+- 可视化牌组优先级管理界面
+- 中位数算法计算牌组优先级（0-100）
+- 批量调整整个牌组的卡片优先级
+- 实时预览优先级变化
 
-### 🧠 智能调度算法选择器
+### 🎯 混合学习效果
+- 跨牌组全局优先级排序
+- SuperMemo 风格的渐进式阅读
+- 所有新卡片默认 FIX 模式（手动间隔重复）
+- 智能学习队列管理
 
-插件现在支持两种先进的记忆算法，让你的学习更科学！
+### 🛠️ 技术特性
+- 支持 FSRS 和 SM2 算法
+- 协同排名系统
+- 智能缓存和性能优化
+- 完整的 TypeScript 支持
 
-#### 📖 SM2 算法（经典稳定）
-- 基于 [SuperMemo 2](https://super-memory.com/english/ol/sm2.htm) 算法的改良版本
-- 经过多年验证，稳定可靠
-- 适合大多数用户的日常学习需求
+## 📋 使用方法
 
-#### 🚀 FSRS 算法（现代AI）
-- **Free Spaced Repetition Scheduler** - 基于机器学习的现代算法
-- 提供更准确的长期记忆预测和复习时间安排
-- 在最新科学研究中证明优于传统算法
+### 基础使用
+1. 安装插件到 Roam Research
+2. 点击侧边栏的 Memo 按钮打开练习界面
+3. 使用搜索功能快速找到目标牌组
+4. 开始学习！
 
-**💡 使用方法：**
-1. 打开插件设置页面
-2. 找到"调度算法选择 / Scheduling Algorithm"选项
-3. 用开关选择是否开启FSRS 算法，不开启默认 SM2 算法
-4. 新建卡片将使用选择的算法
-5. 注意算法彼此数据暂不互通，切换算法不会破坏彼此的历史数据。
+### 牌组优先级管理
+1. 在练习界面点击排序图标（📊）
+2. 查看所有牌组的当前优先级中位数
+3. 点击编辑调整牌组优先级
+4. 保存后该牌组所有卡片按比例调整
 
-> **🔄 复习模式切换**：练习时右下角的 `AUTO ⇄ FIX` 开关用于切换复习模式，与SM2/FSRS算法选择无关。
+### 高级功能
+- **混合学习**: 不同牌组的卡片按全局优先级混合排序
+- **渐进式阅读**: 高优先级内容优先学习
+- **智能发现**: 自动发现新页面并加入牌组列表
 
-## 📦 安装方法
+## 🔧 技术架构
 
-在 Roam Research 的扩展页面roam deport中打开开发者模式，添加以下地址：
-
+### 数据流
 ```
-https://raw.githubusercontent.com/issaker/roam-memo-prio/main/extension.js
+Roam Database (Datalog Query)
+       ↓
+useAllPages (自动页面发现)
+       ↓
+usePracticeData (获取卡片数据)
+       ↓
+getPracticeData (返回完整学习数据)
+       ↓
+PracticeOverlay (渲染学习界面)
+       ↓
+useDeckPriority (牌组优先级管理)
 ```
 
-**安装步骤：**
-1. 打开 Roam Research
-2. 点击右上角设置图标 → Settings
-3. 选择 "Roam deport" 标签页
-4. 在 "Developer Extensions" 中打开链接图标按钮，粘贴上述地址
-5. 点击 "load remote extension" 按钮
-6. 重新加载页面完成安装
+### 核心组件
+- **useAllPages**: 页面自动发现和管理
+- **TagSelector**: 搜索增强的牌组选择器
+- **DeckPriorityManager**: 可视化优先级管理界面
+- **useDeckPriority**: 优先级计算和管理逻辑
+- **PracticeOverlay**: 主学习界面
 
-## 🚀 快速开始
+## 📦 安装和构建
 
-1. **创建卡片**：为任何想要记忆的块添加 `#memo` 标签（或自定义标签）
-2. **开始复习**：点击roamresearch侧边栏的 "Review" 按钮启动学习
-3. **智能复习**：根据记忆算法安排的时间复习闪卡
+### 环境要求
+- Node.js 16+
+- npm 或 yarn
+- Roam Research 环境
 
-> **💡 小贴士**：子块被视为"答案"，初始状态隐藏。点击"显示答案"来查看它们。
+### 构建步骤
+```bash
+# 安装依赖
+npm install
 
-## 📚 核心功能
+# 构建生产版本
+npm run build
 
-### 🎯 什么是间隔重复？
+# 输出: extension.js (3.27MB)
+```
 
-间隔重复是一种基于记忆规律的学习技术：
-- 根据你的记忆程度智能安排复习时间
-- 难记的内容增加复习频率，熟悉的内容延长间隔
-- 这是将大量知识从短期记忆转化为长期记忆最有效的方法
+### 技术栈
+- **前端**: React + TypeScript
+- **UI库**: Blueprint.js
+- **样式**: Emotion (styled-components)
+- **构建**: Webpack 5
+- **API**: Roam Alpha API (Datalog)
 
-### 🗂️ 多卡组支持
+## 🚧 项目状态
 
-通过插件设置创建多个学习卡组：
-- 在"标签页面"字段中输入逗号分隔的标签列表
-- 例如：`西班牙语, 法语, 编程` 为不同学科建立独立卡组
+### ✅ 已完成功能 (90%)
+1. ✅ 搜索增强牌组选择器
+2. ✅ 自动页面发现系统
+3. ✅ 牌组优先级管理界面
+4. ✅ 默认 FIX 模式设置
+5. ✅ 完整数据流集成
+6. ✅ Bug修复 - selectedTag同步问题
 
-> **提示**：标签名称包含逗号时，请用引号包围，如 `"页面, 带逗号"`
+### 🚧 待完成功能 (10%)
+1. 🔲 未定义牌组完整实现
+2. 🔲 优先级批量更新后端逻辑
+3. 🔲 性能优化（大数据量）
+4. 🔲 完善错误处理
 
-### 🎭 文本遮挡（填空练习）
+### 📊 代码质量
+- ✅ TypeScript 编译通过
+- ✅ Webpack 构建成功
+- ⚠️ Bundle 大小需优化 (3.27MB)
+- 🔲 需要单元测试
 
-挑战你的记忆力，隐藏文本的关键部分，变成填空题：
-- Roam 快捷键 Ctrl+H 高亮功能，使用 `^^` 包围文本：`^^隐藏我^^`
-- 或使用大括号：`{我也被隐藏}`
-- 注意：如果你不是 Roam 的默认 css 主题，可能会出现挖空遮挡失效的情况。
+## 🔧 开发指南
 
-### 📊 每日限制
+### 文件结构
+```
+src/
+├── components/
+│   ├── overlay/PracticeOverlay.tsx    # 主学习界面
+│   ├── DeckPriorityManager.tsx        # 优先级管理
+│   └── SidePanelWidget.tsx           # 侧边栏按钮
+├── hooks/
+│   ├── useAllPages.tsx               # 页面发现
+│   ├── useDeckPriority.tsx          # 优先级管理
+│   └── usePracticeData.tsx          # 学习数据
+├── queries/
+│   ├── data.ts                       # 数据查询
+│   ├── save.ts                       # 数据保存
+│   └── utils.ts                      # 工具函数
+└── models/
+    ├── practice.ts                   # 学习模型
+    └── session.ts                    # 会话模型
+```
 
-设置每日复习限制来控制学习时间：
-- 在插件设置页面配置每日复习卡片上限
-- 系统确保至少 ~25% 的卡片是新卡片，保持学习平衡
+### 关键算法
 
-### 🎓 强化模式
+#### 牌组优先级中位数计算
+```typescript
+const calculateMedian = (numbers: number[]): number => {
+  const sorted = [...numbers].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 
+    ? (sorted[middle - 1] + sorted[middle]) / 2 
+    : sorted[middle];
+};
+```
 
-完成当日到期卡片后，可选择继续"强化模式"：
-- 复习卡组中的所有卡片，无论是否到期
-- 适合考试冲刺，不影响正常的间隔重复调度
-- 该模式可以修改和保存你的卡片优先级
+#### 优先级批量调整公式
+```typescript
+// 新优先级 = 原优先级 × (新中位数/原中位数)
+const newPriority = oldPriority * (newMedian / oldMedian);
+```
 
-### ⌨️ 键盘快捷键
+### 开发规范
+- 使用 TypeScript 严格模式
+- 遵循 React Hooks 最佳实践
+- 添加完整的错误处理
+- 考虑性能和用户体验
 
-| 操作 | 快捷键 | 助记说明 |
-|------|--------|----------|
-| 显示答案 | `空格` | Space (显示) |
-| 跳过当前卡片 | `s` 或 `→` | **S**kip (跳过) |
-| 返回上一张 | `←` | 左箭头 (返回) |
-| 显示面包屑 | `b` | **B**readcrumb (面包屑) |
-| 评分：完美记住 | `空格` | Space (完美) |
-| 评分：完全忘记 | `x` | ❌ (忘记标记) |
-| 评分：有点困难 | `h` | **H**ard (困难) |
-| 评分：表现良好 | `g` | **G**ood (良好) |
+## ⚠️ 重要提醒
 
-> **📝 重要说明**：
-> - 快捷键 `x` 与算法名称 FSRS **完全无关**，仅用于标记忘记！
-> - 算法切换请到插件设置页面的"调度算法选择"选项
-> - 练习界面的 `AUTO ⇄ FIX` 开关是复习模式切换，不是算法切换
+### 运行环境
+- 代码依赖 `window.roamAlphaAPI`，必须在 Roam Research 环境中运行
+- 优先级调整会影响用户学习数据，需谨慎操作
+- 大量页面/卡片时注意性能影响
 
-### 🎨 命令面板集成
+### 数据安全
+- 所有数据保存在用户的 Roam 数据库中
+- 不会上传任何个人数据到外部服务器
+- 支持完全离线使用
 
-通过命令面板快速启动：`CMD + P` → 输入 "Memo: Start Review Session"
+## 🐛 已知问题修复
 
-### 🔄 RoamSr 数据迁移
+### Bug修复记录
+- ✅ **selectedTag同步问题**: 修复了异步Hook间状态不同步导致的崩溃
+- ✅ **防御性编程**: 添加了完善的错误边界处理
+- ✅ **数据流一致性**: 确保React组件间数据流的时序一致性
 
-从旧版 RoamSr 插件无缝迁移数据：
+## 📄 许可证
 
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=-vTHVknIdX4" target="_blank">
-<img src="https://user-images.githubusercontent.com/1279335/220912625-f4cc5ab7-fbf1-4d86-8934-e635ac85ee7b.png" alt="观看视频教程" width="400"/>
-</a>
+本项目基于原 Memo 插件开发，遵循相同的开源许可证。
 
-**迁移步骤：**
-1. 按照 [此指南](https://roamresearch.com/#/app/developer-documentation/page/bmYYKQ4vf) 生成具有写入权限的 API 密钥
-2. 进入插件设置页面，点击"迁移 Roam/Sr 数据"部分的"启动"按钮
-3. 输入 API 密钥并点击"获取预览数据"
-4. 检查数据，旧的 roam/sr 数据应显示在表格中
-5. 确认无误后点击"导入"
+## 🤝 贡献指南
 
-> **⚠️ 注意**：建议在迁移前备份你的 #roam/memo 页面。如果数据量大，同步可能需要一些时间。
+1. Fork 本项目
+2. 创建 feature 分支
+3. 提交变更
+4. 发起 Pull Request
 
-## 🐛 问题反馈与功能建议
+## 📞 支持和反馈
 
-如有任何问题或建议，请在 [Issues 页面](https://github.com/issaker/roam-memo-prio/issues) 提交，我们会尽快处理！
-
-## 💖 支持项目发展
-
-<div align="center">
-
-如果觉得这个插件对你有帮助，欢迎给我一些激励~
-
-[**💖 爱发电支持开发**](https://ifdian.net/item/185914144ecb11f0abea52540025c377)
-
-**你的每一份支持都是推动项目发展的动力！** ✨
-
-📈 支持资金将用于：
-🔧 持续的功能开发与优化  
-☁️ 服务器运行与维护成本
-📚 用户文档与教程制作
-🐛 bug修复与技术支持
-</div>
-
-## 🎉 致谢与支持
-<div align="center">
-  
-**🙏 特别感谢**：<br/>
-原作者 [@digitalmaster](https://github.com/digitalmaster) 创建了这个出色的插件<br/>
-原项目地址：[digitalmaster/roam-memo](https://github.com/digitalmaster/roam-memo)<br/>
-支持原作者：[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H0YPGK)<br/>
-感谢 [L-M-Sherlock (Jarrett Ye)](https://github.com/L-M-Sherlock) 老师对渐进阅读学习原理和方法的无私推广，让更多人受益
-
-</div>
-
-**📄 开源协议**：MIT License
+如有问题或建议，请通过以下方式联系：
+- 创建 GitHub Issue
+- 查看项目文档和注释
+- 参考代码中的详细实现说明
 
 ---
 
-*让学习变得更科学、更高效！🚀*
+**最后更新**: 2024年12月30日  
+**项目状态**: 核心功能完成，可正常使用  
+**版本**: v2.1.0 (SuperMemo混合学习增强版)
