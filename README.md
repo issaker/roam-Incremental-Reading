@@ -170,7 +170,6 @@ https://raw.githubusercontent.com/issaker/Memo-Enhanced/main/extension.js
 
 📈 支持资金将用于：
 🔧 持续的功能开发与优化  
-☁️ 服务器运行与维护成本
 📚 用户文档与教程制作
 🐛 bug修复与技术支持
 </div>
@@ -181,7 +180,6 @@ https://raw.githubusercontent.com/issaker/Memo-Enhanced/main/extension.js
 **🙏 特别感谢**：<br/>
 原作者 [@digitalmaster](https://github.com/digitalmaster) 创建了这个出色的插件<br/>
 原项目地址：[digitalmaster/roam-memo](https://github.com/digitalmaster/roam-memo)<br/>
-支持原作者：[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H0YPGK)<br/>
 感谢 [L-M-Sherlock (Jarrett Ye)](https://github.com/L-M-Sherlock) 老师对渐进阅读学习原理和方法的无私推广，让更多人受益
 
 </div>
