@@ -244,7 +244,7 @@ export const getOrCreateChildBlock = async (parent_uid, block, order, blockProps
 };
 
 export const generateNewSession = ({
-  reviewMode = ReviewModes.DefaultSpacedInterval,
+  reviewMode = ReviewModes.FixedInterval, // 默认改为 FIX 模式
   dateCreated = undefined,
   isNew = true,
 } = {}): NewSession => {
@@ -259,6 +259,7 @@ export const generateNewSession = ({
     };
   }
 
+  // FIX 模式（手动间隔重复）
   return {
     dateCreated: dateCreated || new Date(),
     intervalMultiplier: 3,

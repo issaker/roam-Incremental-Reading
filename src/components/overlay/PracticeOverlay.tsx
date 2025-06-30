@@ -17,6 +17,8 @@ import CardBlock from '~/components/overlay/CardBlock';
 import Footer from '~/components/overlay/Footer';
 import PrioritySlider from '~/components/overlay/PrioritySlider';
 import ButtonTags from '~/components/ButtonTags';
+import DeckPriorityManager from '~/components/DeckPriorityManager';
+import useDeckPriority from '~/hooks/useDeckPriority';
 import { CompleteRecords, IntervalMultiplierType, ReviewModes } from '~/models/session';
 import useCurrentCardData from '~/hooks/useCurrentCardData';
 import { generateNewSession } from '~/queries';
@@ -61,6 +63,7 @@ interface Props {
   allCardsCount: number;
   priorityOrder: string[];
   allCardUids: string[];
+  cardUids: Record<string, string[]>;
   defaultPriority: number;
   fsrsEnabled: boolean;
 }
@@ -84,16 +87,16 @@ const PracticeOverlay = ({
   allCardsCount,
   priorityOrder,
   allCardUids,
+  cardUids,
   defaultPriority,
   fsrsEnabled,
 }: Props) => {
   const todaySelectedTag = today.tags[selectedTag];
-  const newCardsUids = todaySelectedTag.newUids;
-  const dueCardsUids = todaySelectedTag.dueUids;
+  const completedTodayCount = todaySelectedTag.completed;
   
   // 按优先级排名合并队列
   const practiceCardUids = React.useMemo(() => {
-    const allCards = [...dueCardsUids, ...newCardsUids];
+    const allCards = [...todaySelectedTag.dueUids, ...todaySelectedTag.newUids];
     
     if (priorityOrder.length === 0) {
       return allCards;
@@ -112,13 +115,12 @@ const PracticeOverlay = ({
       
       return 0;
     });
-  }, [dueCardsUids, newCardsUids, priorityOrder]);
+  }, [todaySelectedTag.dueUids, todaySelectedTag.newUids, priorityOrder]);
   const renderMode = todaySelectedTag.renderMode;
 
   const [currentIndex, setCurrentIndex] = React.useState(0);
 
   const isFirst = currentIndex === 0;
-  const completedTodayCount = todaySelectedTag.completed;
 
   const currentCardRefUid = practiceCardUids[currentIndex] as string | undefined;
 
@@ -151,6 +153,18 @@ const PracticeOverlay = ({
   // 协同排名系统状态管理
   const [rankingChanges, setRankingChanges] = React.useState<Record<string, number>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  
+  // 牌组优先级管理
+  const [showDeckPriorityManager, setShowDeckPriorityManager] = React.useState(false);
+  
+  const { deckPriorities, updateDeckPriority, isLoading: deckPriorityLoading } = useDeckPriority({
+    tagsList,
+    practiceData,
+    cardUids,
+    priorityOrder,
+    allCardsCount,
+    defaultPriority,
+  });
   
   // ✅ 添加组件卸载标志，防止异步操作在组件卸载后执行
   const isMountedRef = React.useRef(true);
@@ -439,6 +453,7 @@ const PracticeOverlay = ({
           setShowBreadcrumbs={setShowBreadcrumbs}
           isCramming={isCramming}
           practiceCardUids={practiceCardUids}
+          onOpenDeckPriority={() => setShowDeckPriorityManager(true)}
         />
 
         <DialogBody
@@ -518,6 +533,15 @@ const PracticeOverlay = ({
           />
         )}
       </Dialog>
+      
+      {/* 牌组优先级管理器 */}
+      <DeckPriorityManager
+        isOpen={showDeckPriorityManager}
+        onClose={() => setShowDeckPriorityManager(false)}
+        deckPriorities={deckPriorities}
+        updateDeckPriority={updateDeckPriority}
+        selectedDeck={selectedTag}
+      />
     </MainContext.Provider>
   );
 };
@@ -562,16 +586,62 @@ const HeaderWrapper = styled.div`
 `;
 
 const TagSelector = ({ tagsList, selectedTag, onTagChange }) => {
+  // 自定义过滤函数，支持中文和拼音搜索
+  const filterTag = (query: string, tag: string) => {
+    const normalizedQuery = query.toLowerCase();
+    const normalizedTag = tag.toLowerCase();
+    return normalizedTag.includes(normalizedQuery);
+  };
+
+  // 自定义输入框渲染
+  const inputRenderer = (query: string, handleChange: (event: React.ChangeEvent<HTMLInputElement>) => void) => (
+    <Blueprint.InputGroup
+      leftIcon="search"
+      placeholder="搜索牌组..."
+      value={query}
+      onChange={handleChange}
+      autoFocus
+    />
+  );
+
   return (
     // @ts-ignore
     <BlueprintSelect.Select
       items={tagsList}
       activeItem={selectedTag}
-      filterable={false}
-      itemRenderer={(tag, { handleClick, modifiers }) => {
+      filterable={true}
+      itemPredicate={filterTag}
+      inputProps={{ placeholder: "搜索牌组..." }}
+      itemRenderer={(tag, { handleClick, modifiers, query }) => {
+        // 高亮匹配的部分
+        const index = tag.toLowerCase().indexOf(query.toLowerCase());
+        if (query && index >= 0) {
+          const before = tag.substring(0, index);
+          const match = tag.substring(index, index + query.length);
+          const after = tag.substring(index + query.length);
+          
+          return (
+            <TagSelectorItem
+              text={
+                <span>
+                  {before}
+                  <strong style={{ color: '#106ba3' }}>{match}</strong>
+                  {after}
+                </span>
+              }
+              originalText={tag}
+              tagsList={tagsList}
+              active={modifiers.active}
+              key={tag}
+              onClick={handleClick}
+            />
+          );
+        }
+        
         return (
           <TagSelectorItem
             text={tag}
+            originalText={tag}
             tagsList={tagsList}
             active={modifiers.active}
             key={tag}
@@ -582,7 +652,16 @@ const TagSelector = ({ tagsList, selectedTag, onTagChange }) => {
       onItemSelect={(tag) => {
         onTagChange(tag);
       }}
-      popoverProps={{ minimal: true }}
+      popoverProps={{ 
+        minimal: true,
+        popoverClassName: "tag-selector-popover",
+        modifiers: {
+          preventOverflow: { enabled: true },
+          flip: { enabled: true }
+        }
+      }}
+      resetOnQuery={true}
+      resetOnSelect={true}
     >
       <Blueprint.Button
         text={selectedTag}
@@ -616,14 +695,16 @@ const Tag = styled(Blueprint.Tag)`
   }
 `;
 
-const TagSelectorItem = ({ text, onClick, active, tagsList }) => {
+const TagSelectorItem = ({ text, originalText, onClick, active, tagsList }) => {
   const { today, setRenderMode } = React.useContext(MainContext);
-  const dueCount = today.tags[text].due;
-  const newCount = today.tags[text].new;
-  const tagRenderMode = today.tags[text].renderMode || RenderMode.Normal;
+  // 使用 originalText 来查找数据，text 用于显示
+  const tagKey = originalText || text;
+  const dueCount = today.tags[tagKey]?.due || 0;
+  const newCount = today.tags[tagKey]?.new || 0;
+  const tagRenderMode = today.tags[tagKey]?.renderMode || RenderMode.Normal;
   const [showTagSettings, setShowTagSettings] = React.useState(false);
 
-  const index = tagsList.indexOf(text);
+  const index = tagsList.indexOf(tagKey);
   const placement = index === tagsList.length - 1 ? 'bottom' : 'top';
 
   const toggleTagSettings = () => {
@@ -634,7 +715,7 @@ const TagSelectorItem = ({ text, onClick, active, tagsList }) => {
     const newRenderMode =
       tagRenderMode === RenderMode.Normal ? RenderMode.AnswerFirst : RenderMode.Normal;
 
-    setRenderMode(text, newRenderMode);
+    setRenderMode(tagKey, newRenderMode);
   };
 
   const tagSettingsMenu = (
@@ -778,6 +859,7 @@ const Header = ({
   setShowBreadcrumbs,
   isCramming,
   practiceCardUids,
+  onOpenDeckPriority,
 }) => {
   const { selectedTag, today, currentIndex } = useSafeContext(MainContext);
   const todaySelectedTag = today.tags[selectedTag];
@@ -797,6 +879,18 @@ const Header = ({
         </div>
       </div>
       <div className="flex items-center justify-end">
+        {/* 牌组优先级管理按钮 */}
+        {onOpenDeckPriority && (
+          <Tooltip content="管理牌组优先级" placement="left">
+            <Blueprint.Button
+              icon="sort"
+              minimal
+              small
+              onClick={onOpenDeckPriority}
+              className="mx-1"
+            />
+          </Tooltip>
+        )}
         {!isDone && (
           <div onClick={() => setShowBreadcrumbs(!showBreadcrumbs)} className="px-1 cursor-pointer">
             {/* @ts-ignore */}

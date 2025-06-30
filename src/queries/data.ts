@@ -103,6 +103,7 @@ export const getPracticeData = async ({
     allCardsCount,
     priorityOrder,
     allCardUids: Array.from(allCardUids),
+    cardUids, // 返回按标签分组的 cardUids
   };
 };
 

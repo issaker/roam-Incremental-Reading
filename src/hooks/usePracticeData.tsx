@@ -19,6 +19,7 @@ const usePracticeCardsData = ({
   const [allCardsCount, setAllCardsCount] = React.useState<number>(0);
   const [priorityOrder, setPriorityOrder] = React.useState<string[]>([]);
   const [allCardUids, setAllCardUids] = React.useState<string[]>([]);
+  const [cardUids, setCardUids] = React.useState<Record<string, string[]>>({});
 
   const refetchTriggerFn = () => setRefetchTrigger((trigger) => !trigger);
 
@@ -54,7 +55,7 @@ const usePracticeCardsData = ({
       }
       
       try {
-        const { practiceData, todayStats, allCardsCount, priorityOrder, allCardUids } = await queries.getPracticeData({
+        const { practiceData, todayStats, allCardsCount, priorityOrder, allCardUids, cardUids } = await queries.getPracticeData({
           tagsList,
           dataPageTitle,
           dailyLimit,
@@ -74,6 +75,7 @@ const usePracticeCardsData = ({
         setAllCardsCount(allCardsCount);
         setPriorityOrder(priorityOrder);
         setAllCardUids(allCardUids);
+        setCardUids(cardUids);
       } catch (error) {
         console.error('📊 [usePracticeData] 数据获取失败:', error);
       } finally {
@@ -99,6 +101,7 @@ const usePracticeCardsData = ({
     allCardsCount,
     priorityOrder,
     allCardUids,
+    cardUids,
   };
 };
 

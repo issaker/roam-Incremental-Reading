@@ -11,6 +11,7 @@ import useOnBlockInteract from '~/hooks/useOnBlockInteract';
 import useCommandPaletteAction from '~/hooks/useCommandPaletteAction';
 import useCachedData from '~/hooks/useCachedData';
 import useOnVisibilityStateChange from '~/hooks/useOnVisibilityStateChange';
+import useAllPages from '~/hooks/useAllPages';
 import { IntervalMultiplierType, ReviewModes } from '~/models/session';
 import { RenderMode } from '~/models/practice';
 
@@ -27,13 +28,33 @@ const App = () => {
   const [isCramming, setIsCramming] = React.useState(false);
 
   const { tagsListString, dataPageTitle, dailyLimit, rtlEnabled, shuffleCards, defaultPriority, fsrsEnabled } = useSettings();
-  const { selectedTag, setSelectedTag, tagsList } = useTags({ tagsListString });
+  const { selectedTag, setSelectedTag, tagsList: configuredTags } = useTags({ tagsListString });
+  
+  // 使用 useAllPages 获取所有页面
+  const { allPages: tagsList, isLoading: pagesLoading, refreshPages } = useAllPages({ 
+    tagsList: configuredTags, 
+    dataPageTitle 
+  });
+
+  // 🔧 修复：确保selectedTag始终在当前tagsList中
+  const safeSelectedTag = React.useMemo(() => {
+    if (tagsList.length === 0) return '';
+    if (tagsList.includes(selectedTag)) return selectedTag;
+    return tagsList[0];
+  }, [selectedTag, tagsList]);
+
+  // 当safeSelectedTag改变时，同步更新selectedTag
+  React.useEffect(() => {
+    if (safeSelectedTag && safeSelectedTag !== selectedTag) {
+      setSelectedTag(safeSelectedTag);
+    }
+  }, [safeSelectedTag, selectedTag, setSelectedTag]);
 
   const { fetchCacheData, saveCacheData, data: cachedData } = useCachedData({ dataPageTitle });
 
-  const { practiceData, today, fetchPracticeData, allCardsCount, priorityOrder, allCardUids } = usePracticeData({
+  const { practiceData, today, fetchPracticeData, allCardsCount, priorityOrder, allCardUids, cardUids } = usePracticeData({
     tagsList,
-    selectedTag,
+    selectedTag: safeSelectedTag,
     dataPageTitle,
     cachedData,
     isCramming,
@@ -138,7 +159,7 @@ const App = () => {
             today={today}
             handlePracticeClick={handlePracticeClick}
             tagsList={tagsList}
-            selectedTag={selectedTag}
+            selectedTag={safeSelectedTag}
             handleMemoTagChange={setSelectedTag}
             handleReviewMoreClick={() => {}}
             isCramming={isCramming}
@@ -150,6 +171,7 @@ const App = () => {
             allCardsCount={allCardsCount}
             priorityOrder={priorityOrder}
             allCardUids={allCardUids}
+            cardUids={cardUids}
             defaultPriority={defaultPriority}
             fsrsEnabled={fsrsEnabled}
           />
