@@ -1,4 +1,5 @@
 const mediaQueries = {
+  xs: `@media (max-width: 420px)`,     // 手机竖屏
   sm: `@media (min-width: 420px)`,
   md: `@media (min-width: 768px)`,
   lg: `@media (min-width: 1024px)`,

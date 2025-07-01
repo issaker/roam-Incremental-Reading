@@ -7,6 +7,7 @@ import Tooltip from '~/components/Tooltip';
 import ButtonTags from '~/components/ButtonTags';
 import { IntervalMultiplierType, ReviewModes } from '~/models/session';
 import { MainContext } from '~/components/overlay/PracticeOverlay';
+import mediaQueries from '~/utils/mediaQueries';
 
 interface IntervalEstimate {
   reviewMode: string;
@@ -238,7 +239,7 @@ const Footer = ({
 };
 
 const AnswerHiddenControls = ({ activateButtonFn, showAnswerFn, activeButtonKey }) => (
-  <>
+  <AnswerHiddenControlsWrapper>
     {/* 左区域：空 */}
     <div className="flex-shrink-0"></div>
     
@@ -246,7 +247,7 @@ const AnswerHiddenControls = ({ activateButtonFn, showAnswerFn, activeButtonKey 
     <div className="flex-1 flex justify-center">
       {/* @ts-ignore */}
       <ControlButton
-        className="text-base font-medium py-1"
+        className="text-base font-medium py-1 mobile-show-answer"
         intent="none"
         onClick={() => {
           activateButtonFn('space-button', showAnswerFn);
@@ -263,20 +264,35 @@ const AnswerHiddenControls = ({ activateButtonFn, showAnswerFn, activeButtonKey 
     
     {/* 右区域：空 */}
     <div className="flex-shrink-0"></div>
-  </>
+  </AnswerHiddenControlsWrapper>
 );
+
+const AnswerHiddenControlsWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+
+  ${mediaQueries.xs} {
+    .mobile-show-answer {
+      min-width: 200px;
+      min-height: 48px;
+      font-size: 18px;
+      font-weight: 500;
+    }
+  }
+`;
 
 const FinishedControls = ({ onStartCrammingClick, onCloseCallback }) => {
   return (
-    <>
+    <FinishedControlsWrapper>
       {/* 左区域：空 */}
       <div className="flex-shrink-0"></div>
       
       {/* 中区域：完成状态按钮 */}
-      <div className="flex-1 flex justify-center gap-4">
+      <div className="finished-buttons-wrapper flex-1 flex justify-center gap-4">
         <Tooltip content="Review all cards without waiting for scheduling" placement="top">
           <Blueprint.Button
-            className="text-base font-medium py-1"
+            className="text-base font-medium py-1 mobile-finish-button"
             intent="none"
             onClick={onStartCrammingClick}
             outlined
@@ -285,7 +301,7 @@ const FinishedControls = ({ onStartCrammingClick, onCloseCallback }) => {
           </Blueprint.Button>
         </Tooltip>
         <Blueprint.Button
-          className="text-base font-medium py-1"
+          className="text-base font-medium py-1 mobile-finish-button"
           intent="primary"
           onClick={onCloseCallback}
           outlined
@@ -296,9 +312,29 @@ const FinishedControls = ({ onStartCrammingClick, onCloseCallback }) => {
       
       {/* 右区域：空 */}
       <div className="flex-shrink-0"></div>
-    </>
+    </FinishedControlsWrapper>
   );
 };
+
+const FinishedControlsWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+
+  ${mediaQueries.xs} {
+    .finished-buttons-wrapper {
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      
+      .mobile-finish-button {
+        width: 100%;
+        min-height: 44px;
+        font-size: 16px;
+      }
+    }
+  }
+`;
 
 const GradingControlsWrapper = ({
   activateButtonFn,
@@ -332,12 +368,12 @@ const GradingControlsWrapper = ({
 
   const isFixedIntervalMode = reviewMode === ReviewModes.FixedInterval;
   return (
-    <>
+    <GradingControlsContainer>
       {/* 左区域：Skip按钮 - 占据固定空间 */}
-      <div className="flex-shrink-0">
+      <div className="skip-button-wrapper flex-shrink-0">
         <ControlButton
           key="skip-button"
-          className="text-base font-medium py-1"
+          className="text-base font-medium py-1 mobile-skip-button"
           tooltipText={`Skip for now`}
           onClick={() => skipFn()}
           active={activeButtonKey === 'skip-button'}
@@ -351,7 +387,7 @@ const GradingControlsWrapper = ({
       </div>
       
       {/* 中区域：功能按钮 - 自适应空间 */}
-      <div className="flex-1 flex justify-center gap-2 flex-wrap">
+      <div className="grading-buttons-wrapper flex-1 flex justify-center gap-2 flex-wrap">
         {isFixedIntervalMode ? (
           <FixedIntervalModeControls
             activeButtonKey={activeButtonKey}
@@ -370,7 +406,7 @@ const GradingControlsWrapper = ({
       </div>
       
       {/* 右区域：开关按钮 - 固定大小 */}
-      <div className="flex-shrink-0">
+      <div className="toggle-switch-wrapper flex-shrink-0">
         <SetIntervalToggleWrapper 
           className="flex items-center justify-center gap-1 bg-gray-50 px-2 py-1 rounded-md border border-gray-200" 
           style={{ minWidth: '100px' }}
@@ -390,7 +426,7 @@ const GradingControlsWrapper = ({
           </span>
         </SetIntervalToggleWrapper>
       </div>
-    </>
+    </GradingControlsContainer>
   );
 };
 
@@ -509,11 +545,11 @@ const FixedIntervalModeControls = ({
   }
 
   return (
-    <>
+    <FixedIntervalControlsWrapper>
       <Blueprint.Popover isOpen={isIntervalEditorOpen} onInteraction={onInteractionhandler}>
         <ControlButton
           icon="time"
-          className="text-base font-normal py-1"
+          className="text-base font-normal py-1 mobile-interval-button"
           intent="default"
           onClick={toggleIntervalEditorOpen}
           tooltipText={`Change Interval`}
@@ -532,7 +568,7 @@ const FixedIntervalModeControls = ({
       </Blueprint.Popover>
       <ControlButton
         icon="tick"
-        className="text-base font-medium py-1"
+        className="text-base font-medium py-1 mobile-next-button"
         intent="success"
         onClick={() => intervalPractice()}
         tooltipText={`Review ${intervalEstimates[0].nextDueDateFromNow}`}
@@ -544,9 +580,28 @@ const FixedIntervalModeControls = ({
           <ButtonTags>SPACE</ButtonTags>
         </span>
       </ControlButton>
-    </>
+    </FixedIntervalControlsWrapper>
   );
 };
+
+const FixedIntervalControlsWrapper = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  ${mediaQueries.xs} {
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+
+    .mobile-interval-button,
+    .mobile-next-button {
+      width: 100%;
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
+`;
 
 const SpacedIntervalModeControls = ({
   activeButtonKey,
@@ -563,10 +618,10 @@ const SpacedIntervalModeControls = ({
   }
 
   return (
-    <>
+    <SpacedIntervalButtonsWrapper>
       <ControlButton
         key="forget-button"
-        className="text-base font-medium py-1"
+        className="text-base font-medium py-1 mobile-button"
         intent="danger"
         tooltipText={`Review ${intervalEstimates[0]?.nextDueDateFromNow}`}
         onClick={() => gradeFn(0)}
@@ -579,7 +634,7 @@ const SpacedIntervalModeControls = ({
         </span>
       </ControlButton>
       <ControlButton
-        className="text-base font-medium py-1"
+        className="text-base font-medium py-1 mobile-button"
         intent="warning"
         onClick={() => gradeFn(2)}
         tooltipText={`Review ${intervalEstimates[2]?.nextDueDateFromNow}`}
@@ -592,7 +647,7 @@ const SpacedIntervalModeControls = ({
         </span>
       </ControlButton>
       <ControlButton
-        className="text-base font-medium py-1"
+        className="text-base font-medium py-1 mobile-button"
         intent="primary"
         onClick={() => gradeFn(4)}
         tooltipText={`Review ${intervalEstimates[4]?.nextDueDateFromNow}`}
@@ -605,7 +660,7 @@ const SpacedIntervalModeControls = ({
         </span>
       </ControlButton>
       <ControlButton
-        className="text-base font-medium py-1"
+        className="text-base font-medium py-1 mobile-button"
         intent="success"
         onClick={() => gradeFn(5)}
         tooltipText={`Review ${intervalEstimates[5]?.nextDueDateFromNow}`}
@@ -617,9 +672,34 @@ const SpacedIntervalModeControls = ({
           <ButtonTags>SPACE</ButtonTags>
         </span>
       </ControlButton>
-    </>
+    </SpacedIntervalButtonsWrapper>
   );
 };
+
+// 添加响应式包装器
+const SpacedIntervalButtonsWrapper = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+
+  ${mediaQueries.xs} {
+    flex-direction: column;
+    gap: 6px;
+
+    .mobile-button {
+      width: 100%;
+      min-height: 44px;
+      font-size: 16px;
+      
+      .bp3-button-text {
+        width: 100%;
+        justify-content: space-between;
+        padding: 0 16px;
+      }
+    }
+  }
+`;
 
 const FooterWrapper = styled.div`
   background-color: #f6f9fd;
@@ -631,15 +711,31 @@ const FooterWrapper = styled.div`
     justify-content: center;
     align-items: center;
   }
+
+  ${mediaQueries.xs} {
+    padding: 12px 8px;
+  }
 `;
 
 const FooterActionsWrapper = styled.div`
   &.bp3-dialog-footer-actions .bp3-button {
     margin-left: 0;
   }
+
+  ${mediaQueries.xs} {
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 !important;
+  }
 `;
 
-const SetIntervalToggleWrapper = styled.div``;
+const SetIntervalToggleWrapper = styled.div`
+  ${mediaQueries.xs} {
+    order: -1;
+    align-self: flex-end;
+    margin-bottom: 8px;
+  }
+`;
 
 const ControlButtonWrapper = styled(Blueprint.Button)``;
 
@@ -651,5 +747,40 @@ const ControlButton = ({ tooltipText, wrapperClassName = '', ...props }) => {
     </Tooltip>
   );
 };
+
+// 添加 GradingControlsContainer 样式
+const GradingControlsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+
+  ${mediaQueries.xs} {
+    flex-direction: column;
+    gap: 8px;
+
+    .skip-button-wrapper {
+      width: 100%;
+      
+      .mobile-skip-button {
+        width: 100%;
+        min-height: 40px;
+        font-size: 14px;
+      }
+    }
+
+    .grading-buttons-wrapper {
+      width: 100%;
+      order: 2;
+    }
+
+    .toggle-switch-wrapper {
+      order: 1;
+      align-self: flex-end;
+      margin-bottom: 8px;
+    }
+  }
+`;
 
 export default Footer;
