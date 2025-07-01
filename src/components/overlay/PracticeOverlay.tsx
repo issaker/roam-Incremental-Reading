@@ -644,16 +644,6 @@ const Dialog = styled(Blueprint.Dialog)`
   max-height: 80vh;
   width: 90vw;
 
-  ${mediaQueries.mobile} {
-    /* 手机端占满屏幕 */
-    width: 100vw;
-    max-width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    margin: 0;
-    border-radius: 0;
-  }
-
   ${mediaQueries.lg} {
     width: 80vw;
   }
@@ -666,14 +656,6 @@ const Dialog = styled(Blueprint.Dialog)`
 const DialogBody = styled.div`
   overflow-x: hidden; // because of tweaks we do in ContentWrapper container overflows
   min-height: 200px;
-
-  ${mediaQueries.mobile} {
-    /* 手机端减少内边距 */
-    padding: 16px 12px;
-    /* 确保内容可以滚动 */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
-  }
 `;
 
 const HeaderWrapper = styled.div`
@@ -688,36 +670,10 @@ const HeaderWrapper = styled.div`
   line-height: inherit;
   margin: 0;
   min-height: 50px;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
 
   /* Shortcut way to tag selector color */
   & .bp3-button {
     color: #5c7080;
-  }
-
-  ${mediaQueries.mobile} {
-    padding: 0 8px;
-    min-height: 48px;
-    
-    .text-sm {
-      font-size: 12px;
-    }
-    
-    .mx-2 {
-      margin-left: 4px;
-      margin-right: 4px;
-    }
-    
-    .mx-3 {
-      margin-left: 8px;
-      margin-right: 8px;
-    }
-
-    .bp3-switch {
-      transform: scale(0.8);
-    }
   }
 `;
 
@@ -1145,17 +1101,6 @@ const GlobalMixedToggleWrapper = styled.div`
   }
 
   transition: all 0.2s ease;
-
-  ${mediaQueries.xs} {
-    min-width: 65px !important;
-    
-    .text-xs {
-      font-size: 10px;
-    }
-    
-    /* 减少内边距 */
-    padding: 2px 4px !important;
-  }
 `;
 
 export default PracticeOverlay;
