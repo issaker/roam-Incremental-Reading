@@ -273,11 +273,15 @@ const AnswerHiddenControlsWrapper = styled.div`
   width: 100%;
 
   ${mediaQueries.xs} {
+    padding: 8px 0;
+    
     .mobile-show-answer {
       min-width: 200px;
-      min-height: 48px;
-      font-size: 18px;
+      min-height: 42px;
+      max-height: 42px;
+      font-size: 16px;
       font-weight: 500;
+      padding: 8px 16px !important;
     }
   }
 `;
@@ -682,20 +686,33 @@ const SpacedIntervalButtonsWrapper = styled.div`
   gap: 8px;
   align-items: center;
   width: 100%;
+  flex-wrap: wrap;
 
   ${mediaQueries.xs} {
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    padding: 8px 0;
+    width: 100%;
 
     .mobile-button {
       width: 100%;
-      min-height: 44px;
-      font-size: 16px;
+      min-height: 38px;
+      max-height: 38px;
+      font-size: 14px;
+      padding: 6px 12px !important;
       
       .bp3-button-text {
         width: 100%;
+        display: flex;
         justify-content: space-between;
-        padding: 0 16px;
+        align-items: center;
+        font-weight: 500;
+        
+        .ml-2 {
+          margin-left: 8px;
+          font-size: 11px;
+          opacity: 0.8;
+        }
       }
     }
   }
@@ -724,8 +741,9 @@ const FooterActionsWrapper = styled.div`
 
   ${mediaQueries.xs} {
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
     margin: 0 !important;
+    padding: 8px 12px;
   }
 `;
 
@@ -758,27 +776,38 @@ const GradingControlsContainer = styled.div`
 
   ${mediaQueries.xs} {
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+    padding: 4px;
 
     .skip-button-wrapper {
       width: 100%;
       
       .mobile-skip-button {
         width: 100%;
-        min-height: 40px;
-        font-size: 14px;
+        min-height: 34px;
+        max-height: 34px;
+        font-size: 13px;
+        padding: 4px 8px !important;
       }
     }
 
     .grading-buttons-wrapper {
       width: 100%;
       order: 2;
+      /* 紧凑布局，移除多余空间 */
+      flex: none;
     }
 
     .toggle-switch-wrapper {
       order: 1;
       align-self: flex-end;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
+      flex-shrink: 0;
+      
+      /* 缩小开关尺寸 */
+      .bp3-switch {
+        transform: scale(0.8);
+      }
     }
   }
 `;
