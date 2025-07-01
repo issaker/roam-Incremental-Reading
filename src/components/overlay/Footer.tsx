@@ -272,16 +272,14 @@ const AnswerHiddenControlsWrapper = styled.div`
   align-items: center;
   width: 100%;
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     padding: 8px 0;
     
     .mobile-show-answer {
       min-width: 200px;
       min-height: 42px;
-      max-height: 42px;
       font-size: 16px;
       font-weight: 500;
-      padding: 8px 16px !important;
     }
   }
 `;
@@ -325,7 +323,7 @@ const FinishedControlsWrapper = styled.div`
   align-items: center;
   width: 100%;
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     .finished-buttons-wrapper {
       flex-direction: column;
       gap: 8px;
@@ -593,7 +591,7 @@ const FixedIntervalControlsWrapper = styled.div`
   gap: 8px;
   align-items: center;
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     flex-direction: column;
     width: 100%;
     gap: 6px;
@@ -688,7 +686,7 @@ const SpacedIntervalButtonsWrapper = styled.div`
   width: 100%;
   flex-wrap: wrap;
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     flex-direction: column;
     gap: 8px;
     padding: 8px 0;
@@ -696,22 +694,18 @@ const SpacedIntervalButtonsWrapper = styled.div`
 
     .mobile-button {
       width: 100%;
-      min-height: 38px;
-      max-height: 38px;
+      min-height: 40px;
       font-size: 14px;
-      padding: 6px 12px !important;
       
       .bp3-button-text {
         width: 100%;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-weight: 500;
         
         .ml-2 {
           margin-left: 8px;
-          font-size: 11px;
-          opacity: 0.8;
+          font-size: 12px;
         }
       }
     }
@@ -729,7 +723,7 @@ const FooterWrapper = styled.div`
     align-items: center;
   }
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     padding: 12px 8px;
   }
 `;
@@ -739,16 +733,16 @@ const FooterActionsWrapper = styled.div`
     margin-left: 0;
   }
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     flex-direction: column;
     gap: 6px;
-    margin: 0 !important;
+    margin: 0;
     padding: 8px 12px;
   }
 `;
 
 const SetIntervalToggleWrapper = styled.div`
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     order: -1;
     align-self: flex-end;
     margin-bottom: 8px;
@@ -774,39 +768,32 @@ const GradingControlsContainer = styled.div`
   width: 100%;
   gap: 12px;
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     flex-direction: column;
-    gap: 6px;
-    padding: 4px;
+    gap: 8px;
 
     .skip-button-wrapper {
       width: 100%;
       
       .mobile-skip-button {
         width: 100%;
-        min-height: 34px;
-        max-height: 34px;
-        font-size: 13px;
-        padding: 4px 8px !important;
+        min-height: 36px;
+        font-size: 14px;
       }
     }
 
     .grading-buttons-wrapper {
       width: 100%;
       order: 2;
-      /* 紧凑布局，移除多余空间 */
-      flex: none;
     }
 
     .toggle-switch-wrapper {
       order: 1;
       align-self: flex-end;
-      margin-bottom: 4px;
-      flex-shrink: 0;
+      margin-bottom: 8px;
       
-      /* 缩小开关尺寸 */
       .bp3-switch {
-        transform: scale(0.8);
+        transform: scale(0.9);
       }
     }
   }

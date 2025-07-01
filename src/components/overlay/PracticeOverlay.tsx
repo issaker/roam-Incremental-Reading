@@ -644,7 +644,7 @@ const Dialog = styled(Blueprint.Dialog)`
   max-height: 80vh;
   width: 90vw;
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     /* 手机端占满屏幕 */
     width: 100vw;
     max-width: 100vw;
@@ -667,12 +667,9 @@ const DialogBody = styled.div`
   overflow-x: hidden; // because of tweaks we do in ContentWrapper container overflows
   min-height: 200px;
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     /* 手机端减少内边距 */
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-    padding-top: 16px !important;
-    padding-bottom: 16px !important;
+    padding: 16px 12px;
     /* 确保内容可以滚动 */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
@@ -700,16 +697,14 @@ const HeaderWrapper = styled.div`
     color: #5c7080;
   }
 
-  ${mediaQueries.xs} {
+  ${mediaQueries.mobile} {
     padding: 0 8px;
     min-height: 48px;
     
-    /* 缩小字体和间距 */
     .text-sm {
       font-size: 12px;
     }
     
-    /* 隐藏一些不太重要的元素 */
     .mx-2 {
       margin-left: 4px;
       margin-right: 4px;
@@ -720,9 +715,8 @@ const HeaderWrapper = styled.div`
       margin-right: 8px;
     }
 
-    /* 调整开关大小 */
     .bp3-switch {
-      transform: scale(0.7) !important;
+      transform: scale(0.8);
     }
   }
 `;
