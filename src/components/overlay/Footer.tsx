@@ -7,6 +7,7 @@ import Tooltip from '~/components/Tooltip';
 import ButtonTags from '~/components/ButtonTags';
 import { IntervalMultiplierType, ReviewModes } from '~/models/session';
 import { MainContext } from '~/components/overlay/PracticeOverlay';
+import mediaQueries from '~/utils/mediaQueries';
 
 interface IntervalEstimate {
   reviewMode: string;
@@ -636,6 +637,27 @@ const FooterWrapper = styled.div`
 const FooterActionsWrapper = styled.div`
   &.bp3-dialog-footer-actions .bp3-button {
     margin-left: 0;
+  }
+
+  /* 📱 Stack controls vertically on mobile portrait */
+  ${mediaQueries.mobilePortrait} {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem;
+
+    & .bp3-button {
+      font-size: clamp(12px, 3vw, 14px);
+      padding: 0.3rem 0.5rem;
+      min-height: 44px; /* maintain tap target */
+    }
+
+    /* Middle control group horizontal scroll when too many buttons */
+    & > .flex-1 {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      gap: 0.25rem;
+    }
   }
 `;
 

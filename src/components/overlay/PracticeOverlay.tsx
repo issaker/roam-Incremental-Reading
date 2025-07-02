@@ -651,6 +651,16 @@ const Dialog = styled(Blueprint.Dialog)`
   ${mediaQueries.xl} {
     width: 70vw;
   }
+
+  /* 📱 Mobile portrait: full-screen vertical layout */
+  ${mediaQueries.mobilePortrait} {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0; /* remove offset around dialog */
+    border-radius: 0;
+    grid-template-rows: auto 1fr auto;
+  }
 `;
 
 const DialogBody = styled.div`
@@ -674,6 +684,30 @@ const HeaderWrapper = styled.div`
   /* Shortcut way to tag selector color */
   & .bp3-button {
     color: #5c7080;
+  }
+
+  /* 📱 Portrait: 转为两行布局，避免元素挤压 */
+  ${mediaQueries.mobilePortrait} {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    min-height: auto;
+
+    & > div:first-of-type,
+    & > div:last-of-type {
+      width: 100%;
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    & span[data-testid='display-count-current'],
+    & span[data-testid='display-count-total'] {
+      font-size: 0.75rem;
+    }
   }
 `;
 
