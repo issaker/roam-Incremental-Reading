@@ -15,7 +15,7 @@ interface Props {
   selectedDeck?: string;
   isOpen: boolean;
   onClose: () => void;
-  onApplyOffset: (deckName: string, offsetPercent: number) => Promise<void>;
+  onApplyOffset: (deckName: string, offsetValue: number) => Promise<void>;
 }
 
 const DeckPriorityManager = ({
@@ -47,9 +47,9 @@ const DeckPriorityManager = ({
     if (editingDeck && onApplyOffset) {
       setIsApplying(true);
       try {
-        // 计算偏移百分比：tempPriority 是目标优先级，originalPriority 是原始优先级
-        const offsetPercent = ((tempPriority - originalPriority) / originalPriority) * 100;
-        await onApplyOffset(editingDeck, offsetPercent);
+        // 计算绝对偏移值：tempPriority 是目标优先级，originalPriority 是原始优先级
+        const offsetValue = tempPriority - originalPriority;
+        await onApplyOffset(editingDeck, offsetValue);
         setEditingDeck(null);
       } catch (error) {
         console.error('应用牌组偏移失败:', error);
@@ -150,9 +150,10 @@ const DeckPriorityManager = ({
             <h4>牌组优先级说明</h4>
             <ul>
               <li>每个牌组的优先级是其所有卡片优先级的中位数。</li>
-              <li>在编辑模式下，使用滑块设置一个**偏移量**（-50% 至 +50%）。</li>
+              <li>在编辑模式下，使用滑块设置一个**绝对偏移量**（-100 至 +100 点）。</li>
               <li>保存后，该牌组内所有卡片的优先级将按此偏移量进行批量调整。</li>
               <li>优先级越高，卡片在混合学习队列中越靠前。</li>
+              <li>超出 0-100 范围的优先级会自动限制在边界内。</li>
             </ul>
           </Blueprint.Callout>
         </InfoSection>

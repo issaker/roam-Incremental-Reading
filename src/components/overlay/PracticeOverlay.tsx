@@ -168,9 +168,15 @@ const PracticeOverlay = ({
   // 牌组优先级管理
   const [showDeckPriorityManager, setShowDeckPriorityManager] = React.useState(false);
   
-  // 🚀 新增：牌组偏移处理函数
-  const handleDeckOffsetApply = React.useCallback(async (deckName: string, offsetPercent: number) => {
+  // 🚀 新增：牌组偏移处理函数（绝对优先级偏移）
+  const handleDeckOffsetApply = React.useCallback(async (deckName: string, offsetValue: number) => {
     try {
+      // 0. 零偏移快速返回
+      if (offsetValue === 0) {
+        console.log(`牌组 ${deckName} 偏移量为0，跳过操作`);
+        return;
+      }
+
       // 1. 获取该牌组的所有卡片UID
       const deckCardUids = cardUids[deckName] || [];
       if (deckCardUids.length === 0) {
@@ -180,32 +186,67 @@ const PracticeOverlay = ({
 
       // 2. 创建rankMap以便快速查找当前排名
       const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i + 1]));
+      const N = allCardsCount;
       
-      // 3. 计算每张卡的新排名
-      const rankingChanges: Record<string, number> = {};
-      
-      for (const cardUid of deckCardUids) {
-        const currentRank = rankMap.get(cardUid) || Math.ceil(allCardsCount * (1 - defaultPriority / 100));
-        // 偏移计算：正偏移 = 排名靠前，负偏移 = 排名靠后
-        const targetRank = Math.round(currentRank * (1 - offsetPercent / 100));
-        // 确保排名在有效范围内
-        rankingChanges[cardUid] = Math.max(1, Math.min(allCardsCount, targetRank));
+      // 3. 处理单卡总量边界情况
+      if (N <= 1) {
+        console.log(`总卡片数量 ${N}，直接设置rank=1`);
+        const rankingChanges: Record<string, number> = {};
+        deckCardUids.forEach(uid => {
+          rankingChanges[uid] = 1;
+        });
+        await bulkSaveRankingChanges({ rankingChanges, dataPageTitle, allCardUids });
+        onDataRefresh();
+        return;
       }
+      
+      // 4. 计算每张卡新的 priority → rank，并处理边界重叠
+      const entries = deckCardUids.map(uid => {
+        const currentRank = rankMap.get(uid) || Math.ceil(N * (1 - defaultPriority / 100));
+        // 转换当前排名为优先级百分比：priority = (1 - (rank-1)/(N-1)) * 100
+        const currentPriority = (1 - (currentRank - 1) / (N - 1)) * 100;
+        
+        // 应用绝对偏移并限制在 0-100 范围内
+        const newPriority = Math.max(0, Math.min(100, currentPriority + offsetValue));
+        
+        // 转换新优先级为排名：rank = (1 - priority/100) * (N-1) + 1
+        const rawRank = (1 - newPriority / 100) * (N - 1) + 1;
+        return { uid, target: Math.round(rawRank) };
+      });
 
-      // 4. 批量保存排名变更
+      // 5. 解决边界重叠：rank 相同按 UID 升序排序，然后分配唯一排名
+      entries.sort((a, b) => 
+        a.target === b.target ? a.uid.localeCompare(b.uid) : a.target - b.target
+      );
+
+      const rankingChanges: Record<string, number> = {};
+      let lastRank = 0;
+      entries.forEach(({ uid, target }, index) => {
+        // 确保排名唯一且在有效范围内，防止尾部溢出
+        let uniqueRank = Math.max(target, lastRank + 1);
+        if (uniqueRank > N) {
+          // 若超出总数，从尾部向前分配剩余位置
+          const remainingSlots = N - index;
+          uniqueRank = Math.max(1, remainingSlots);
+        }
+        rankingChanges[uid] = uniqueRank;
+        lastRank = uniqueRank;
+      });
+
+      // 6. 批量保存排名变更
       await bulkSaveRankingChanges({
         rankingChanges,
         dataPageTitle,
         allCardUids
       });
 
-      // 5. 刷新数据以反映新的排名
+      // 7. 刷新数据以反映新的排名
       onDataRefresh();
       
-      // 6. 用户反馈
+      // 8. 用户反馈
       if (window.roamAlphaAPI?.ui?.showToast) {
         window.roamAlphaAPI.ui.showToast({
-          message: `牌组 "${deckName}" 优先级偏移 ${offsetPercent > 0 ? '+' : ''}${offsetPercent}% 已应用`,
+          message: `牌组「${deckName}」已偏移 ${offsetValue > 0 ? '+' : ''}${offsetValue} 点`,
           intent: 'success',
           timeout: 3000
         });
@@ -319,6 +360,12 @@ const PracticeOverlay = ({
     setCurrentIndex(0);
     handleMemoTagChange(tag);
     setIsCramming(false);
+
+    // 🚀 新增：用户选择牌组时自动切换到单组模式
+    // 避免用户忘记当前模式导致的困惑
+    if (isGlobalMixedMode) {
+      setIsGlobalMixedMode(false);
+    }
 
     // To prevent 'space' key event from triggering dropdown
     await asyncUtils.sleep(100);

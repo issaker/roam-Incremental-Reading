@@ -7,6 +7,17 @@ console.log('Memo: Initializing...');
 const container_id: string = 'roam-memo-wrapper';
 
 const createAndRenderContainer = () => {
+  // 🛡️ 防重复插入：若容器已存在则复用
+  const existingContainers = document.querySelectorAll(`#${container_id}`);
+  if (existingContainers.length > 0) {
+    // 移除除第一个外的其他重复容器，确保 DOM 结构唯一
+    existingContainers.forEach((node, idx) => {
+      if (idx > 0 && node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+    });
+    return existingContainers[0] as HTMLElement;
+  }
   // @TODO: This is where I want it personally, but maybe make this a configurable setting?
   const siblingElm = document.querySelector('.rm-left-sidebar__daily-notes');
   const newContainerElm = document.createElement('div');
