@@ -462,8 +462,8 @@ const PracticeOverlay = ({
   Blueprint.useHotkeys(hotkeys);
 
   // 层级管理：当弹窗打开时注入CSS修复，关闭时移除
-  const contentRef = useZIndexFix<HTMLDivElement>();
-  useFocusFix(contentRef);
+  useZIndexFix(isOpen);
+  useFocusFix(isOpen);
 
   // 在滑块消失时批量保存优先级数据
   const shouldShowSlider = !isDone && hasCards;
@@ -572,7 +572,6 @@ const PracticeOverlay = ({
         onClose={onCloseCallback}
         className="pb-0 bg-white"
         canEscapeKeyClose={false}
-        ref={contentRef}
       >
         <Header
           className="bp3-dialog-header outline-none focus:outline-none focus-visible:outline-none"

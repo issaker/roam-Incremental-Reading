@@ -10,7 +10,6 @@ const usePracticeCardsData = ({
   cachedData,
   isCramming,
   dailyLimit,
-  shuffleCards,
   defaultPriority,
 }) => {
   // 🚀 P1: 使用 useRef 存储大对象，避免不必要的重渲染
