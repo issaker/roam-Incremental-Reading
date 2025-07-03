@@ -65,30 +65,6 @@ const settingsPanelConfig = ({ settings, setSettings }) => {
         },
       },
       {
-        id: 'rtlEnabled',
-        name: 'Right-to-Left (RTL) Enabled',
-        description: 'Enable RTL for languages like Arabic, Hebrew, etc.',
-        action: {
-          type: 'switch',
-          checked: settings.rtlEnabled,
-          onChange: (e) => {
-            processChange({ key: 'rtlEnabled', value: e.target.checked });
-          },
-        },
-      },
-      {
-        id: 'shuffleCards',
-        name: 'Shuffle Cards',
-        description: 'Randomly shuffle the order of new and due cards during review.',
-        action: {
-          type: 'switch',
-          checked: settings.shuffleCards,
-          onChange: (e) => {
-            processChange({ key: 'shuffleCards', value: e.target.checked });
-          },
-        },
-      },
-      {
         id: 'defaultPriority',
         name: 'Default Priority for New Cards',
         description: 'Set the default priority (0-100) for new cards. Higher numbers = higher priority. New cards will be added to the ranking list with this priority.',

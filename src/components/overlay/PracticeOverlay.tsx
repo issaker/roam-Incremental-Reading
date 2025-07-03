@@ -56,7 +56,6 @@ interface Props {
   handleReviewMoreClick: () => void;
   isCramming: boolean;
   setIsCramming: (isCramming: boolean) => void;
-  rtlEnabled: boolean;
   setRenderMode: (tag: string, mode: RenderMode) => void;
   dataPageTitle: string;
   onDataRefresh: () => void;
@@ -83,7 +82,6 @@ const PracticeOverlay = ({
   handleReviewMoreClick,
   isCramming,
   setIsCramming,
-  rtlEnabled,
   setRenderMode,
   dataPageTitle,
   onDataRefresh,
@@ -464,11 +462,8 @@ const PracticeOverlay = ({
   Blueprint.useHotkeys(hotkeys);
 
   // 层级管理：当弹窗打开时注入CSS修复，关闭时移除
-  useZIndexFix(isOpen);
-
-  // 焦点管理：当弹窗打开时激活焦点保护，关闭时停用
-  // 解决memo窗口中编辑时换行切换block导致的焦点丢失问题
-  useFocusFix(isOpen);
+  const contentRef = useZIndexFix<HTMLDivElement>();
+  useFocusFix(contentRef);
 
   // 在滑块消失时批量保存优先级数据
   const shouldShowSlider = !isDone && hasCards;
@@ -577,6 +572,7 @@ const PracticeOverlay = ({
         onClose={onCloseCallback}
         className="pb-0 bg-white"
         canEscapeKeyClose={false}
+        ref={contentRef}
       >
         <Header
           className="bp3-dialog-header outline-none focus:outline-none focus-visible:outline-none"
@@ -597,7 +593,6 @@ const PracticeOverlay = ({
 
         <DialogBody
           className="bp3-dialog-body overflow-y-scroll m-0 pt-6 pb-8 px-4"
-          dir={rtlEnabled ? 'rtl' : undefined}
         >
           {currentCardRefUid ? (
             <>

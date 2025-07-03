@@ -39,7 +39,6 @@ export const getPracticeData = async ({
   dataPageTitle,
   dailyLimit,
   isCramming,
-  shuffleCards,
   cachedData,
   defaultPriority = 70,
 }) => {
@@ -82,13 +81,12 @@ export const getPracticeData = async ({
     sessionData,
   });
 
-  addNewCards({ today, tagsList, cardUids, pluginPageData, shuffleCards, priorityOrder });
+  addNewCards({ today, tagsList, cardUids, pluginPageData, priorityOrder });
   addDueCards({
     today,
     tagsList,
     sessionData,
     isCramming,
-    shuffleCards,
     priorityOrder,
   });
   

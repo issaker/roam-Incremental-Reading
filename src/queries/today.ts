@@ -147,14 +147,12 @@ export const addNewCards = ({
   tagsList,
   cardUids,
   pluginPageData,
-  shuffleCards,
   priorityOrder = [],
 }: {
   today: Today;
   tagsList: string[];
   cardUids: Record<string, RecordUid[]>;
   pluginPageData: CompleteRecords;
-  shuffleCards: boolean;
   priorityOrder?: string[];
 }) => {
   const rankMap = createRankMap(priorityOrder);
@@ -170,11 +168,9 @@ export const addNewCards = ({
       }
     });
 
-    if (rankMap && !shuffleCards) {
+    if (rankMap) {
       const getRank = (uid: string) => rankMap.get(uid) ?? Number.MAX_SAFE_INTEGER;
       newCardsUids.sort((a, b) => getRank(a) - getRank(b));
-    } else if (shuffleCards) {
-      newCardsUids.sort(() => Math.random() - 0.5);
     }
 
     today.tags[currentTag] = {
@@ -221,15 +217,13 @@ export const getDueCardUids = (currentTagSessionData: CompleteRecords, isCrammin
   return results;
 };
 
-export const addDueCards = ({ today, tagsList, sessionData, isCramming, shuffleCards, priorityOrder = [] }) => {
+export const addDueCards = ({ today, tagsList, sessionData, isCramming, priorityOrder = [] }) => {
   const rankMap = createRankMap(priorityOrder);
   for (const currentTag of tagsList) {
     const currentTagSessionData = sessionData[currentTag];
     const dueCardsUids = getDueCardUids(currentTagSessionData, isCramming, priorityOrder);
 
-    if (shuffleCards) {
-      dueCardsUids.sort(() => Math.random() - 0.5);
-    } else if (rankMap) {
+    if (rankMap) {
       const getRank = (uid: string) => rankMap.get(uid) ?? Number.MAX_SAFE_INTEGER;
       dueCardsUids.sort((a, b) => getRank(a) - getRank(b));
     }

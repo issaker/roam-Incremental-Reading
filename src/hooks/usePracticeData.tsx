@@ -51,7 +51,6 @@ const usePracticeCardsData = ({
           dataPageTitle,
           dailyLimit,
           isCramming,
-          shuffleCards,
           cachedData,
           defaultPriority: stableDefaultPriority,
         });
@@ -79,7 +78,6 @@ const usePracticeCardsData = ({
     isCramming,
     dailyLimit,
     tagsList,
-    shuffleCards,
     cachedData,
     stableDefaultPriority,
   ]);

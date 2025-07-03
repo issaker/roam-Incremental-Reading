@@ -4,8 +4,6 @@ import settingsPanelConfig from '~/settingsPanelConfig';
 export type Settings = {
   dataPageTitle: string;
   dailyLimit: number;
-  rtlEnabled: boolean;
-  shuffleCards: boolean;
   defaultPriority: number;
   fsrsEnabled: boolean;
   isGlobalMixedMode: boolean;
@@ -14,8 +12,6 @@ export type Settings = {
 export const defaultSettings: Settings = {
   dataPageTitle: 'roam/memo',
   dailyLimit: 0, // 0 = no limit,
-  rtlEnabled: false,
-  shuffleCards: false,
   defaultPriority: 70,
   fsrsEnabled: true, // ✅ 默认启用FSRS算法 - 更科学的记忆预测
   isGlobalMixedMode: false, // 默认关闭全局混合模式
@@ -39,10 +35,6 @@ const useSettings = (): [Settings, React.Dispatch<React.SetStateAction<Settings>
     const allSettings = window.roamMemo.extensionAPI.settings.getAll() || {};
 
     // 1. 迁移和设置默认值
-    // Manually set shuffleCards to true if it doesn't exist.
-    if (!('shuffleCards' in allSettings)) {
-      allSettings.shuffleCards = defaultSettings.shuffleCards;
-    }
     // 迁移旧的schedulingAlgorithm设置到新的fsrsEnabled布尔值
     if ('schedulingAlgorithm' in allSettings && !('fsrsEnabled' in allSettings)) {
       allSettings.fsrsEnabled = allSettings.schedulingAlgorithm === 'FSRS';

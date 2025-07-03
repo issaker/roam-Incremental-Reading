@@ -29,7 +29,7 @@ const App = () => {
   const [selectedTag, setSelectedTag] = React.useState<string>('');
 
   const [settings, setSettings] = useSettings();
-  const { dataPageTitle, dailyLimit, rtlEnabled, shuffleCards, defaultPriority, fsrsEnabled, isGlobalMixedMode } = settings;
+  const { dataPageTitle, dailyLimit, defaultPriority, fsrsEnabled, isGlobalMixedMode } = settings;
   
   // 使用 useAllPages 获取所有页面作为牌组
   const { allPages: tagsList, isLoading: pagesLoading, refreshPages } = useAllPages({ 
@@ -60,7 +60,6 @@ const App = () => {
     cachedData,
     isCramming,
     dailyLimit,
-    shuffleCards,
     defaultPriority,
   });
 
@@ -191,7 +190,6 @@ const App = () => {
             handleReviewMoreClick={() => {}}
             isCramming={isCramming}
             setIsCramming={setIsCramming}
-            rtlEnabled={rtlEnabled}
             setRenderMode={setRenderMode}
             dataPageTitle={dataPageTitle}
             onDataRefresh={refreshData}
