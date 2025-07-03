@@ -639,19 +639,27 @@ const FooterActionsWrapper = styled.div`
     margin-left: 0;
   }
 
-  /* 📱 Stack controls vertically on mobile portrait */
+  /* 📱 Mobile portrait: Skip & Toggle share first row, grading controls second row */
   ${mediaQueries.mobilePortrait} {
-    flex-direction: column !important;
-    align-items: stretch !important;
+    /* ❶ 重点：改成 grid，而不是 flex-column */
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'skip  toggle'
+      'middle middle';
     gap: 0.5rem;
 
+    /* ❷ 给 3 个直接子元素绑定网格区域 */
+    & > :nth-child(1) { grid-area: skip;   }   /* Skip */
+    & > :nth-child(2) { grid-area: middle; }   /* 中间评分按钮组 */
+    & > :nth-child(3) { grid-area: toggle; justify-self: end; } /* AUTO/FIX */
+
+    /* 字号、滚动等原有细节保持不变 */
     & .bp3-button {
       font-size: clamp(12px, 3vw, 14px);
       padding: 0.3rem 0.5rem;
       min-height: 44px; /* maintain tap target */
     }
-
-    /* Middle control group horizontal scroll when too many buttons */
     & > .flex-1 {
       flex-wrap: nowrap;
       overflow-x: auto;

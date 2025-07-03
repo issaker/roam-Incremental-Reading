@@ -133,21 +133,8 @@ const PrioritySlider: React.FC<PrioritySliderProps> = ({
 
   return (
     <PriorityContainer>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#2c3e50' }}>
-          优先级排名
-        </span>
-        <span style={{ 
-          fontSize: '12px', 
-          color: '#7f8c8d', 
-          marginLeft: '8px',
-          fontStyle: 'italic'
-        }}>
-          (拖动调整排名，关闭窗口时自动保存)
-        </span>
-      </div>
-      
       <SliderWrapper>
+        {/* 滑块本身 */}
         <StyledSlider
           type="range"
           min="1"
@@ -156,24 +143,22 @@ const PrioritySlider: React.FC<PrioritySliderProps> = ({
           onChange={handleSliderChange}
           disabled={disabled}
         />
-      </SliderWrapper>
-      
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        marginTop: '8px',
-        fontSize: '12px',
-        color: '#7f8c8d'
-      }}>
-        <span>低优先级（第{allCardsCount}名）</span>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold', color: '#2c3e50' }}>
-            当前总排名：第{priority}名
-            {allCardsCount > 0 && ` / 共${allCardsCount}张卡片`}
-          </span>
+
+        {/* 排名标签：绝对定位在滑块上方中间 */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '-24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            color: '#2c3e50',
+          }}
+        >
+          {priority} / {allCardsCount}
         </div>
-        <span>高优先级（第1名）</span>
-      </div>
+      </SliderWrapper>
     </PriorityContainer>
   );
 };
