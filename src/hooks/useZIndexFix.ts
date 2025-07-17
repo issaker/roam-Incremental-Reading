@@ -56,13 +56,11 @@ export const useZIndexFix = (isOpen: boolean) => {
       styleElement.textContent = cssRules;
       document.head.appendChild(styleElement);
       
-      console.log('🔧 Roam Memo: Z-index fix 已激活');
     } else {
       // 移除样式
       const existingStyle = document.getElementById(STYLE_ID);
       if (existingStyle) {
         document.head.removeChild(existingStyle);
-        console.log('🔧 Roam Memo: Z-index fix 已移除');
       }
     }
 

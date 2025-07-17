@@ -15,17 +15,16 @@ import { useFocusFix } from '~/hooks/useFocusFix';
 
 import CardBlock from '~/components/overlay/CardBlock';
 import Footer from '~/components/overlay/Footer';
-import PrioritySlider from '~/components/overlay/PrioritySlider';
 import ButtonTags from '~/components/ButtonTags';
-import DeckPriorityManager from '~/components/DeckPriorityManager';
-import useDeckPriority from '~/hooks/useDeckPriority';
+import DeckManager from '~/components/DeckManager';
+import PrioritySlider from '~/components/PrioritySlider';
+import CardDotMatrixManager from '~/components/CardDotMatrixManager';
 import { CompleteRecords, IntervalMultiplierType, ReviewModes } from '~/models/session';
 import useCurrentCardData from '~/hooks/useCurrentCardData';
 import { generateNewSession } from '~/queries';
 import { CompletionStatus, Today, RenderMode } from '~/models/practice';
 import { handlePracticeProps } from '~/app';
 import { useSafeContext } from '~/hooks/useSafeContext';
-import { bulkSaveRankingChanges, getCardRank } from '~/queries/save';
 
 interface MainContextProps {
   reviewMode: ReviewModes | undefined;
@@ -65,9 +64,14 @@ interface Props {
   cardUids: Record<string, string[]>;
   defaultPriority: number;
   fsrsEnabled: boolean;
-  deckPriorities: Record<string, any>;
   isGlobalMixedMode: boolean;
   setIsGlobalMixedMode: (mode: boolean) => void;
+  priorityManager?: any;
+  moveCard?: (uid: string, newPosition: number) => Promise<void>;
+  getCardPosition?: (uid: string) => number;
+  getTotalCards?: () => number;
+  getDeckPositions?: () => { deckName: string; position: number; cardCount: number }[];
+  moveDeck?: (deckName: string, direction: 'up' | 'down') => Promise<void>;
 }
 
 const PracticeOverlay = ({
@@ -91,31 +95,48 @@ const PracticeOverlay = ({
   cardUids,
   defaultPriority,
   fsrsEnabled,
-  deckPriorities,
   isGlobalMixedMode,
   setIsGlobalMixedMode,
+  priorityManager,
+  moveCard,
+  getCardPosition,
+  getTotalCards,
+  getDeckPositions,
+  moveDeck,
 }: Props) => {
-  const todaySelectedTag = today.tags[selectedTag] || { completed: 0, dueUids: [], newUids: [] };
+  // 🚀 移除内部加载状态，由外部 LoadingShell 统一处理
+  
+  const todaySelectedTag = (today && today.tags && today.tags[selectedTag]) || { completed: 0, dueUids: [], newUids: [] };
   const completedTodayCount = todaySelectedTag.completed;
   
   // 🚀 修改：根据混合学习模式生成不同的练习队列
   const practiceCardUids = React.useMemo(() => {
     let cardUidsToPractice: string[] = [];
 
-    if (isGlobalMixedMode) {
-      // 全局混合模式：从所有牌组收集卡片
-      cardUidsToPractice = tagsList.flatMap(tag => {
-        const tagData = today.tags[tag];
-        return tagData ? [...tagData.dueUids, ...tagData.newUids] : [];
-      });
-      // 去重
-      cardUidsToPractice = [...new Set(cardUidsToPractice)];
-    } else {
-      // 单牌组模式：仅显示当前选中牌组的卡片
-      cardUidsToPractice = [...todaySelectedTag.dueUids, ...todaySelectedTag.newUids];
+    try {
+      if (isGlobalMixedMode && tagsList && today && today.tags) {
+        // 全局混合模式：从所有牌组收集卡片
+        cardUidsToPractice = tagsList.flatMap(tag => {
+          const tagData = today.tags[tag];
+          return tagData ? [...(tagData.dueUids || []), ...(tagData.newUids || [])] : [];
+        });
+        // 去重
+        cardUidsToPractice = [...new Set(cardUidsToPractice)];
+      } else {
+        // 单牌组模式：仅显示当前选中牌组的卡片
+        cardUidsToPractice = [...(todaySelectedTag.dueUids || []), ...(todaySelectedTag.newUids || [])];
+      }
+    } catch (error) {
+      console.error('生成练习卡片列表时出错:', error);
+      cardUidsToPractice = [];
     }
     
-    // 按全局优先级排序
+    // 使用新的统一优先级管理器进行排序
+    if (priorityManager) {
+      return priorityManager.getSortedUids().filter(uid => cardUidsToPractice.includes(uid));
+    }
+    
+    // 降级处理：使用旧的排序逻辑
     if (priorityOrder.length > 0) {
       const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i]));
       const getRank = (uid: string) => rankMap.get(uid) ?? Number.MAX_SAFE_INTEGER;
@@ -123,15 +144,74 @@ const PracticeOverlay = ({
     }
     
     return cardUidsToPractice;
-  }, [isGlobalMixedMode, tagsList, today.tags, todaySelectedTag.dueUids, todaySelectedTag.newUids, priorityOrder]);
+  }, [isGlobalMixedMode, tagsList, today.tags, todaySelectedTag.dueUids, todaySelectedTag.newUids, priorityManager, priorityOrder]);
+
 
   const renderMode = todaySelectedTag.renderMode;
 
   const [currentIndex, setCurrentIndex] = React.useState(0);
 
+  // 🐛 修复：模式切换时重置currentIndex
+  React.useEffect(() => {
+    setCurrentIndex(0);
+  }, [isGlobalMixedMode, selectedTag]);
+
+  // 🚀 简单的倒计时实现 - 插队到当前队列
+  const timersRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const [practiceCardUidsState, setPracticeCardUidsState] = React.useState<string[]>([]);
+  
+  // 初始化队列状态
+  React.useEffect(() => {
+    setPracticeCardUidsState(practiceCardUids);
+  }, [practiceCardUids.join(',')]);
+  
+  // 清理所有定时器
+  const clearAllTimers = React.useCallback(() => {
+    timersRef.current.forEach(timer => clearTimeout(timer));
+    timersRef.current.clear();
+  }, []);
+
+  // 组件卸载时清理定时器
+  React.useEffect(() => {
+    return () => {
+      clearAllTimers();
+    };
+  }, [clearAllTimers]);
+
+  // 窗口关闭时清理定时器
+  React.useEffect(() => {
+    if (!isOpen) {
+      clearAllTimers();
+    }
+  }, [isOpen, clearAllTimers]);
+
+  // 卡片到期插队函数
+  const insertCardToQueue = React.useCallback((cardUid: string) => {
+    setPracticeCardUidsState(current => {
+      // 检查卡片是否已经在队列中
+      if (current.includes(cardUid)) {
+        // 如果已经在队列中，移到当前位置后面
+        const filtered = current.filter(uid => uid !== cardUid);
+        const insertIndex = Math.min(currentIndex + 1, filtered.length);
+        const newQueue = [...filtered];
+        newQueue.splice(insertIndex, 0, cardUid);
+        return newQueue;
+      } else {
+        // 如果不在队列中，插入到当前位置后面
+        const insertIndex = Math.min(currentIndex + 1, current.length);
+        const newQueue = [...current];
+        newQueue.splice(insertIndex, 0, cardUid);
+        return newQueue;
+      }
+    });
+  }, [currentIndex]);
+
+  const actualPracticeCardUids = practiceCardUidsState;
+
   const isFirst = currentIndex === 0;
 
-  const currentCardRefUid = practiceCardUids[currentIndex] as string | undefined;
+  // 🚀 直接提供 currentCardRefUid，无需等待初始化
+  const currentCardRefUid = actualPracticeCardUids[currentIndex] as string | undefined;
 
   const sessions = React.useMemo(() => {
     return currentCardRefUid ? practiceData[currentCardRefUid] || [] : [];
@@ -141,10 +221,15 @@ const PracticeOverlay = ({
     sessions,
   });
 
-  const totalCardsCount = todaySelectedTag.new + todaySelectedTag.due;
+  // 🐛 修复：在全局混合模式下，hasCards应该基于实际的练习队列而非单个牌组
+  const totalCardsCount = isGlobalMixedMode 
+    ? actualPracticeCardUids.length 
+    : todaySelectedTag.new + todaySelectedTag.due;
   const hasCards = totalCardsCount > 0;
   
-  const isDone = todaySelectedTag.status === CompletionStatus.Finished || !currentCardData;
+  const isDone = (isGlobalMixedMode 
+    ? actualPracticeCardUids.length === 0 
+    : todaySelectedTag.status === CompletionStatus.Finished) || !currentCardData;
 
   const newFixedSessionDefaults = React.useMemo(
     () => generateNewSession({ reviewMode: ReviewModes.FixedInterval }),
@@ -159,142 +244,31 @@ const PracticeOverlay = ({
         (newFixedSessionDefaults.intervalMultiplierType as IntervalMultiplierType)
     );
 
-  // 协同排名系统状态管理
-  const [rankingChanges, setRankingChanges] = React.useState<Record<string, number>>({});
-  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
-  
   // 牌组优先级管理
   const [showDeckPriorityManager, setShowDeckPriorityManager] = React.useState(false);
   
-  // 🚀 新增：牌组偏移处理函数（绝对优先级偏移）
-  const handleDeckOffsetApply = React.useCallback(async (deckName: string, offsetValue: number) => {
+  // 处理优先级更新
+  const handlePriorityUpdate = React.useCallback(async (newPriorityOrder: string[]) => {
     try {
-      // 0. 零偏移快速返回
-      if (offsetValue === 0) {
-        console.log(`牌组 ${deckName} 偏移量为0，跳过操作`);
-        return;
-      }
-
-      // 1. 获取该牌组的所有卡片UID
-      const deckCardUids = cardUids[deckName] || [];
-      if (deckCardUids.length === 0) {
-        console.warn(`牌组 ${deckName} 没有卡片，跳过偏移操作`);
-        return;
-      }
-
-      // 2. 创建rankMap以便快速查找当前排名
-      const rankMap = new Map(priorityOrder.map((uid, i) => [uid, i + 1]));
-      const N = allCardsCount;
+      // 使用静态导入，与usePriorityManager.tsx相同的方式
+      const saveModule = await import('~/queries/save');
+      const { savePriorityOrder } = saveModule;
       
-      // 3. 处理单卡总量边界情况
-      if (N <= 1) {
-        console.log(`总卡片数量 ${N}，直接设置rank=1`);
-        const rankingChanges: Record<string, number> = {};
-        deckCardUids.forEach(uid => {
-          rankingChanges[uid] = 1;
+      if (typeof savePriorityOrder === 'function') {
+        await savePriorityOrder({ 
+          dataPageTitle, 
+          priorityOrder: newPriorityOrder 
         });
-        await bulkSaveRankingChanges({ rankingChanges, dataPageTitle, allCardUids });
+        
+        // 刷新数据
         onDataRefresh();
-        return;
-      }
-      
-      // 4. 计算每张卡新的 priority → rank，并处理边界重叠
-      const entries = deckCardUids.map(uid => {
-        const currentRank = rankMap.get(uid) || Math.ceil(N * (1 - defaultPriority / 100));
-        // 转换当前排名为优先级百分比：priority = (1 - (rank-1)/(N-1)) * 100
-        const currentPriority = (1 - (currentRank - 1) / (N - 1)) * 100;
-        
-        // 应用绝对偏移并限制在 0-100 范围内
-        const newPriority = Math.max(0, Math.min(100, currentPriority + offsetValue));
-        
-        // 转换新优先级为排名：rank = (1 - priority/100) * (N-1) + 1
-        const rawRank = (1 - newPriority / 100) * (N - 1) + 1;
-        return { uid, target: Math.round(rawRank) };
-      });
-
-      // 5. 解决边界重叠：rank 相同按 UID 升序排序，然后分配唯一排名
-      entries.sort((a, b) => 
-        a.target === b.target ? a.uid.localeCompare(b.uid) : a.target - b.target
-      );
-
-      const rankingChanges: Record<string, number> = {};
-      let lastRank = 0;
-      entries.forEach(({ uid, target }, index) => {
-        // 确保排名唯一且在有效范围内，防止尾部溢出
-        let uniqueRank = Math.max(target, lastRank + 1);
-        if (uniqueRank > N) {
-          // 若超出总数，从尾部向前分配剩余位置
-          const remainingSlots = N - index;
-          uniqueRank = Math.max(1, remainingSlots);
-        }
-        rankingChanges[uid] = uniqueRank;
-        lastRank = uniqueRank;
-      });
-
-      // 6. 批量保存排名变更
-      await bulkSaveRankingChanges({
-        rankingChanges,
-        dataPageTitle,
-        allCardUids
-      });
-
-      // 7. 刷新数据以反映新的排名
-      onDataRefresh();
-      
-      // 8. 用户反馈
-      if (window.roamAlphaAPI?.ui?.showToast) {
-        window.roamAlphaAPI.ui.showToast({
-          message: `牌组「${deckName}」已偏移 ${offsetValue > 0 ? '+' : ''}${offsetValue} 点`,
-          intent: 'success',
-          timeout: 3000
-        });
+      } else {
+        throw new Error('savePriorityOrder函数不可用');
       }
     } catch (error) {
-      console.error('牌组偏移应用失败:', error);
-      if (window.roamAlphaAPI?.ui?.showToast) {
-        window.roamAlphaAPI.ui.showToast({
-          message: '牌组优先级偏移应用失败，请重试',
-          intent: 'danger',
-          timeout: 5000
-        });
-      }
+      console.error('更新优先级失败:', error);
     }
-  }, [cardUids, priorityOrder, allCardsCount, defaultPriority, dataPageTitle, allCardUids, onDataRefresh]);
-  
-  // ✅ 添加组件卸载标志，防止异步操作在组件卸载后执行
-  const isMountedRef = React.useRef(true);
-  React.useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-  
-  // 获取当前卡片的排名
-  const currentCardRank = React.useMemo(() => {
-    if (!currentCardRefUid) {
-      return Math.max(1, Math.ceil(allCardsCount * (1 - defaultPriority / 100)));
-    }
-    
-    // 检查是否有本地未保存的变更
-    if (rankingChanges[currentCardRefUid] !== undefined) {
-      return rankingChanges[currentCardRefUid];
-    }
-    
-    const index = priorityOrder.indexOf(currentCardRefUid);
-    return index === -1 ? 1 : index + 1;
-  }, [currentCardRefUid, priorityOrder, allCardsCount, rankingChanges, defaultPriority]);
-
-  // 处理排名变更 - 只更新本地状态，不立即保存
-  const handleRankingChange = React.useCallback((newRank: number) => {
-    if (!currentCardRefUid) return;
-    
-    setRankingChanges(prev => ({
-      ...prev,
-      [currentCardRefUid]: newRank
-    }));
-    
-    setHasUnsavedChanges(true);
-  }, [currentCardRefUid]);
+  }, [dataPageTitle, onDataRefresh]);
 
   // When card changes, update multiplier state
   React.useEffect(() => {
@@ -320,16 +294,17 @@ const PracticeOverlay = ({
   const isDueToday = dateUtils.daysBetween(nextDueDate, new Date()) === 0;
   const status = isNew ? 'new' : isDueToday ? 'dueToday' : hasNextDueDate ? 'pastDue' : null;
 
-  const { blockInfo, isLoading: blockInfoLoading, refreshBlockInfo } = useBlockInfo({ refUid: currentCardRefUid });
+  // 🚀 只有在初始化完成后才获取 blockInfo
+  const { blockInfo, isLoading: blockInfoLoading, refreshBlockInfo } = useBlockInfo({ 
+    refUid: currentCardRefUid 
+  });
   const hasBlockChildren = !!blockInfo.children && !!blockInfo.children.length;
   const hasBlockChildrenUids = !!blockInfo.childrenUids && !!blockInfo.childrenUids.length;
 
   // 🚀 P1: 预取下一张卡片的 blockInfo，提升用户体验
-  const nextCardRefUid = practiceCardUids[currentIndex + 1];
+  const nextCardRefUid = actualPracticeCardUids[currentIndex + 1];
   const { blockInfo: nextBlockInfo } = useBlockInfo({ 
-    refUid: nextCardRefUid,
-    // 只在有下一张卡时才预取，避免不必要的请求
-    skip: !nextCardRefUid 
+    refUid: nextCardRefUid
   });
 
   const [showAnswers, setShowAnswers] = React.useState(false);
@@ -374,15 +349,15 @@ const PracticeOverlay = ({
   };
 
   // When practice queue changes, reset current index
-  const previousQueueLength = React.useRef(practiceCardUids.length);
+  const previousQueueLength = React.useRef(actualPracticeCardUids.length);
   
   React.useEffect(() => {
     // 只在队列长度变化时重置索引
-    if (practiceCardUids.length !== previousQueueLength.current) {
+    if (actualPracticeCardUids.length !== previousQueueLength.current) {
       setCurrentIndex(0);
-      previousQueueLength.current = practiceCardUids.length;
+      previousQueueLength.current = actualPracticeCardUids.length;
     }
-  }, [practiceCardUids.length]);
+  }, [actualPracticeCardUids.length]);
 
   const onPracticeClick = React.useCallback(
     (gradeData) => {
@@ -398,6 +373,46 @@ const PracticeOverlay = ({
       const afterPractice = async () => {
         try {
           await handlePracticeClick(practiceProps);
+          
+          // 🚀 简单的倒计时逻辑
+          if (fsrsEnabled && currentCardRefUid) {
+            try {
+              // 计算下次复习时间
+              const fsrsModule = await import('~/algorithms/fsrs');
+              const fsrsResult = fsrsModule.fsrsAlgorithm(practiceProps, gradeData.grade);
+              
+              if (fsrsResult.fsrsState && fsrsResult.fsrsState.due) {
+                const dueTimestamp = new Date(fsrsResult.fsrsState.due).getTime();
+                const now = Date.now();
+                const delay = dueTimestamp - now;
+                
+                // 如果是当天内需要复习的卡片（24小时内）
+                if (delay > 0 && delay < 24 * 60 * 60 * 1000) {
+                  // 清理该卡片的旧定时器
+                  const existingTimer = timersRef.current.get(currentCardRefUid);
+                  if (existingTimer) {
+                    clearTimeout(existingTimer);
+                  }
+                  
+                  // 先从当前队列中移除这张卡片（避免重复）
+                  setPracticeCardUidsState(current => 
+                    current.filter(uid => uid !== currentCardRefUid)
+                  );
+                  
+                  // 设置新的定时器
+                  const timer = setTimeout(() => {
+                    timersRef.current.delete(currentCardRefUid);
+                    // 插队到当前位置后面，成为下一张卡片
+                    insertCardToQueue(currentCardRefUid);
+                  }, delay);
+                  
+                  timersRef.current.set(currentCardRefUid, timer);
+                }
+              }
+            } catch (error) {
+              console.error('倒计时设置失败:', error);
+            }
+          }
         } catch (error) {
           console.error('练习数据保存失败:', error);
         }
@@ -413,6 +428,8 @@ const PracticeOverlay = ({
       currentCardData,
       intervalMultiplier,
       intervalMultiplierType,
+      fsrsEnabled,
+      currentCardRefUid,
     ]
   );
 
@@ -463,91 +480,12 @@ const PracticeOverlay = ({
 
   // 层级管理：当弹窗打开时注入CSS修复，关闭时移除
   useZIndexFix(isOpen);
+  // 🔧 焦点保护：窗口打开时启用
   useFocusFix(isOpen);
 
-  // 在滑块消失时批量保存优先级数据
-  const shouldShowSlider = !isDone && hasCards;
-  const prevShouldShowSlider = React.useRef(shouldShowSlider);
-  
-  React.useEffect(() => {
-    // 检测滑块从显示变为隐藏（完成复习、窗口关闭等）
-    if (prevShouldShowSlider.current && !shouldShowSlider) {
-      if (Object.keys(rankingChanges).length > 0) {
-        // ✅ 参数验证
-        const validDataPageTitle = dataPageTitle?.trim() || 'roam/memo';
-        if (!allCardUids || allCardUids.length === 0) {
-          return;
-        }
-
-        bulkSaveRankingChanges({ 
-          rankingChanges, 
-          dataPageTitle: validDataPageTitle,
-          allCardUids
-        }).then(() => {
-          // ✅ 检查组件是否已卸载
-          if (!isMountedRef.current) {
-            return;
-          }
-          
-          setRankingChanges({}); // 成功后再清除
-          setHasUnsavedChanges(false);
-        }).catch(error => {
-          // ✅ 检查组件是否已卸载
-          if (!isMountedRef.current) {
-            return;
-          }
-          
-          console.error('🎯 优先级保存失败:', error);
-          
-          // ✅ 用户反馈
-          if (window.roamAlphaAPI?.ui?.showToast) {
-            window.roamAlphaAPI.ui.showToast({
-              message: '优先级保存失败，数据暂存本地。请重新打开练习窗口重试。',
-              intent: 'warning',
-              timeout: 5000
-            });
-          }
-        });
-      }
-    }
-    
-    prevShouldShowSlider.current = shouldShowSlider;
-  }, [shouldShowSlider, rankingChanges, dataPageTitle, allCardUids]); // ✅ 添加allCardUids到依赖
 
   // 🚀 CLEANUP: 移除本地计算的 globalStats，改用来自 usePracticeData 的 today.combinedToday，它是经过后端去重处理的唯一数据源
-  const queueLength = practiceCardUids ? practiceCardUids.length : 0;
-  const todayTotalTarget = isCramming 
-    ? queueLength 
-    : isGlobalMixedMode
-    ? today.combinedToday.completed + queueLength
-    : completedTodayCount + queueLength;
-  const currentDisplayCount = isCramming 
-    ? currentIndex + 1 
-    : isGlobalMixedMode
-    ? today.combinedToday.completed + currentIndex + 1
-    : completedTodayCount + currentIndex + 1;
-
-  // 🚀 计算全局混合模式下的统计数据 - 此部分已被移除，因为逻辑已移至 today.ts
-  /*
-  const globalStats = React.useMemo(() => {
-    if (!isGlobalMixedMode) return null;
-
-    let totalDue = 0;
-    let totalNew = 0;
-    let totalCompleted = 0;
-
-    for (const tag of tagsList) {
-      const tagData = today.tags[tag];
-      if (tagData) {
-        totalDue += tagData.due || 0;
-        totalNew += tagData.new || 0;
-        totalCompleted += tagData.completed || 0;
-      }
-    }
-
-    return { totalDue, totalNew, totalCompleted };
-  }, [isGlobalMixedMode, tagsList, today.tags]);
-  */
+  const queueLength = actualPracticeCardUids ? actualPracticeCardUids.length : 0;
 
   return (
     <MainContext.Provider
@@ -566,13 +504,8 @@ const PracticeOverlay = ({
         setRenderMode,
       }}
     >
-      {/* @ts-ignore */}
-      <Dialog
-        isOpen={isOpen}
-        onClose={onCloseCallback}
-        className="pb-0 bg-white"
-        canEscapeKeyClose={false}
-      >
+      {/* 现在只是内容，不包含 Dialog */}
+      <DialogContent>
         <Header
           className="bp3-dialog-header outline-none focus:outline-none focus-visible:outline-none"
           tagsList={tagsList}
@@ -584,7 +517,7 @@ const PracticeOverlay = ({
           showBreadcrumbs={showBreadcrumbs}
           setShowBreadcrumbs={setShowBreadcrumbs}
           isCramming={isCramming}
-          practiceCardUids={practiceCardUids}
+          practiceCardUids={actualPracticeCardUids}
           onOpenDeckPriority={() => setShowDeckPriorityManager(true)}
           isGlobalMixedMode={isGlobalMixedMode}
           setIsGlobalMixedMode={setIsGlobalMixedMode}
@@ -656,53 +589,44 @@ const PracticeOverlay = ({
           onStartCrammingClick={onStartCrammingClick}
           fsrsEnabled={fsrsEnabled}
         />
-        {/* Priority Slider - only show when we have cards and are not done */}
-        {shouldShowSlider && (
+        {/* 优先级滑块 - 只在有卡片且未完成时显示 */}
+        {!isDone && hasCards && currentCardRefUid && moveCard && getCardPosition && getTotalCards && (
           <PrioritySlider
-            priority={currentCardRank}
-            onPriorityChange={handleRankingChange}
+            currentPosition={getCardPosition(currentCardRefUid)}
+            totalCards={getTotalCards()}
+            onPositionChange={async (newPosition) => {
+              await moveCard(currentCardRefUid, newPosition);
+              onDataRefresh(); // 刷新数据以反映更改
+            }}
             disabled={false}
-            allCardsCount={allCardsCount}
           />
         )}
-      </Dialog>
+      </DialogContent>
       
-      {/* 牌组优先级管理器 */}
-      <DeckPriorityManager
+      {/* 牌组优先级管理器 - 点阵图 */}
+      <CardDotMatrixManager
         isOpen={showDeckPriorityManager}
         onClose={() => setShowDeckPriorityManager(false)}
-        deckPriorities={deckPriorities}
-        selectedDeck={selectedTag}
-        onApplyOffset={handleDeckOffsetApply}
+        practiceData={practiceData}
+        cardUids={cardUids}
+        priorityOrder={priorityOrder}
+        today={today}
+        tagsList={tagsList}
+        selectedTag={selectedTag}
+        onTagSelect={handleMemoTagChange}
+        onPriorityUpdate={handlePriorityUpdate}
       />
     </MainContext.Provider>
   );
 };
 
-const Dialog = styled(Blueprint.Dialog)`
+const DialogContent = styled.div`
   display: grid;
   grid-template-rows: 50px 1fr auto;
-  max-height: 80vh;
-  width: 90vw;
-
-  ${mediaQueries.lg} {
-    width: 80vw;
-  }
-
-  ${mediaQueries.xl} {
-    width: 70vw;
-  }
-
-  /* 📱 Mobile portrait: full-screen vertical layout */
-  ${mediaQueries.mobilePortrait} {
-    width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    margin: 0; /* remove offset around dialog */
-    border-radius: 0;
-    grid-template-rows: auto 1fr auto;
-  }
+  height: 100%;
+  width: 100%;
 `;
+
 
 const DialogBody = styled.div`
   overflow-x: hidden; // because of tweaks we do in ContentWrapper container overflows
@@ -710,7 +634,9 @@ const DialogBody = styled.div`
 `;
 
 const HeaderWrapper = styled.div`
+  display: flex;
   justify-content: space-between;
+  align-items: center;
   color: #5c7080;
   background-color: #f6f9fd;
   box-shadow: 0 1px 0 rgb(16 22 26 / 10%);
@@ -721,6 +647,7 @@ const HeaderWrapper = styled.div`
   line-height: inherit;
   margin: 0;
   min-height: 50px;
+  padding: 0 16px;
 
   /* Shortcut way to tag selector color */
   & .bp3-button {
@@ -1061,21 +988,7 @@ const Header = ({
   const globalStats = isGlobalMixedMode ? today.combinedToday : null;
 
   // 计算显示进度
-  const queueLength = practiceCardUids ? practiceCardUids.length : 0;
-  const todayTotalTarget = isCramming
-    ? queueLength
-    : isGlobalMixedMode
-    ? globalStats
-      ? globalStats.completed + queueLength
-      : 0
-    : completedTodayCount + queueLength;
-  const currentDisplayCount = isCramming
-    ? currentIndex + 1
-    : isGlobalMixedMode
-    ? globalStats
-      ? globalStats.completed + currentIndex + 1
-      : 0
-    : completedTodayCount + currentIndex + 1;
+  const queueLength = practiceCardUids.length;
 
   return (
     <HeaderWrapper className={className} tabIndex={0}>
@@ -1114,9 +1027,7 @@ const Header = ({
         </div>
       </div>
       
-      <div className="flex items-center justify-end">
-        {/* 🚀 REMOVED: 根据用户反馈，移除全局状态提示，简化UI */}
-
+      <RightButtonGroup>
         {/* 牌组优先级管理按钮 */}
         {onOpenDeckPriority && (
           <Tooltip content="管理牌组优先级" placement="left">
@@ -1125,12 +1036,13 @@ const Header = ({
               minimal
               small
               onClick={onOpenDeckPriority}
-              className="mx-1"
             />
           </Tooltip>
         )}
+        
+        {/* Hide Breadcrumbs 按钮 */}
         {!isDone && (
-          <div onClick={() => setShowBreadcrumbs(!showBreadcrumbs)} className="px-1 cursor-pointer">
+          <div onClick={() => setShowBreadcrumbs(!showBreadcrumbs)} className="cursor-pointer">
             {/* @ts-ignore */}
             <Tooltip
               content={<BreadcrumbTooltipContent showBreadcrumbs={showBreadcrumbs} />}
@@ -1143,6 +1055,8 @@ const Header = ({
             </Tooltip>
           </div>
         )}
+        
+        {/* 状态标记 */}
         <span data-testid="status-badge">
           <StatusBadge
             status={status}
@@ -1151,19 +1065,32 @@ const Header = ({
             data-testid="status-badge"
           />
         </span>
-        <span className="text-sm mx-2 font-medium">
-          <span data-testid="display-count-current">{isDone ? 0 : currentDisplayCount}</span>
-          <span className="opacity-50 mx-1">/</span>
-          <span className="opacity-50" data-testid="display-count-total">
-            {isDone ? 0 : todayTotalTarget}
+        
+        {/* 进度计数：新卡 / 旧卡 / 已完成 */}
+        <CounterDisplay>
+          {/* New Cards */}
+          <span style={{ color: '#28a745' }} data-testid="count-new">
+            {isGlobalMixedMode ? today.combinedToday.new : todaySelectedTag.new}
           </span>
-        </span>
+          <span className="opacity-50">/</span>
+          {/* Due Cards */}
+          <span style={{ color: '#007bff' }} data-testid="count-due">
+            {isGlobalMixedMode ? today.combinedToday.due : todaySelectedTag.due}
+          </span>
+          <span className="opacity-50">/</span>
+          {/* Completed */}
+          <span style={{ color: '#000' }} data-testid="count-completed">
+            {isGlobalMixedMode ? today.combinedToday.completed : completedTodayCount}
+          </span>
+        </CounterDisplay>
+        
+        {/* 关闭按钮 */}
         <button
           aria-label="Close"
           className="bp3-dialog-close-button bp3-button bp3-minimal bp3-icon-cross"
           onClick={onCloseCallback}
         ></button>
-      </div>
+      </RightButtonGroup>
     </HeaderWrapper>
   );
 };
@@ -1177,5 +1104,24 @@ const GlobalMixedToggleWrapper = styled.div`
 
   transition: all 0.2s ease;
 `;
+
+// 右侧按钮组
+const RightButtonGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+`;
+
+// 计数显示
+const CounterDisplay = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+`;
+
 
 export default PracticeOverlay;

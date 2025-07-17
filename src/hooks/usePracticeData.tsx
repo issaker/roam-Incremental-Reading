@@ -9,12 +9,14 @@ const usePracticeCardsData = ({
   dataPageTitle,
   cachedData,
   isCramming,
+  isGlobalMixedMode,
   dailyLimit,
   defaultPriority,
 }) => {
   // 🚀 P1: 使用 useRef 存储大对象，避免不必要的重渲染
   const practiceDataRef = React.useRef<CompleteRecords>({});
   const priorityOrderRef = React.useRef<string[]>([]);
+  const priorityManagerRef = React.useRef<any>(null);
   const allCardUidsRef = React.useRef<string[]>([]);
   const cardUidsRef = React.useRef<Record<string, string[]>>({});
   
@@ -45,27 +47,63 @@ const usePracticeCardsData = ({
       isExecutingRef.current = true;
       
       try {
-        const { practiceData, todayStats, allCardsCount, priorityOrder, allCardUids, cardUids } = await queries.getPracticeData({
+        // 🚀 使用事件通知系统告知 UI 数据加载进度
+        window.dispatchEvent(new CustomEvent('memoLoadingProgress', { 
+          detail: { status: '正在加载卡片信息...', progress: 10 } 
+        }));
+        
+        // 🚀 首先快速加载基础统计数据
+        const quickStats = await queries.getQuickStats({
+          tagsList,
+          dataPageTitle,
+          dailyLimit,
+          isGlobalMixedMode,
+        });
+        
+        // 立即更新基础数据以快速渲染
+        setToday(quickStats.todayStats);
+        setAllCardsCount(quickStats.allCardsCount);
+        setDataVersion(prev => prev + 1);
+        
+        window.dispatchEvent(new CustomEvent('memoLoadingProgress', { 
+          detail: { status: '正在加载练习数据...', progress: 40 } 
+        }));
+        
+        // 🚀 然后异步加载完整数据
+        const fullData = await queries.getPracticeData({
           tagsList,
           dataPageTitle,
           dailyLimit,
           isCramming,
           cachedData,
           defaultPriority: stableDefaultPriority,
+          isGlobalMixedMode,
         });
 
-        // 🚀 P1: 更新 Ref 存储的大对象
-        practiceDataRef.current = practiceData;
-        priorityOrderRef.current = priorityOrder;
-        allCardUidsRef.current = allCardUids;
-        cardUidsRef.current = cardUids;
+        window.dispatchEvent(new CustomEvent('memoLoadingProgress', { 
+          detail: { status: '正在处理优先级...', progress: 80 } 
+        }));
 
-        // 🚀 P1: 更新 state 中的关键数据和版本号
-        setToday(todayStats);
-        setAllCardsCount(allCardsCount);
+        // 🚀 P1: 更新 Ref 存储的大对象
+        practiceDataRef.current = fullData.practiceData;
+        priorityOrderRef.current = fullData.priorityOrder;
+        priorityManagerRef.current = fullData.priorityManager;
+        allCardUidsRef.current = fullData.allCardUids;
+        cardUidsRef.current = fullData.cardUids;
+
+        // 🚀 P1: 更新完整数据
+        setToday(fullData.todayStats);
+        setAllCardsCount(fullData.allCardsCount);
         setDataVersion(prev => prev + 1); // 触发组件重渲染
+        
+        window.dispatchEvent(new CustomEvent('memoLoadingProgress', { 
+          detail: { status: '准备完成', progress: 100 } 
+        }));
       } catch (error) {
         console.error('📊 [usePracticeData] 数据获取失败:', error);
+        window.dispatchEvent(new CustomEvent('memoLoadingProgress', { 
+          detail: { status: '加载失败', progress: 0 } 
+        }));
       } finally {
         isExecutingRef.current = false;
       }
@@ -75,6 +113,7 @@ const usePracticeCardsData = ({
     dataPageTitle,
     refetchTrigger,
     isCramming,
+    isGlobalMixedMode,
     dailyLimit,
     tagsList,
     cachedData,
@@ -85,6 +124,7 @@ const usePracticeCardsData = ({
     // 🚀 P1: 返回 getter 函数而非直接的大对象
     get practiceData() { return practiceDataRef.current; },
     get priorityOrder() { return priorityOrderRef.current; },
+    get priorityManager() { return priorityManagerRef.current; },
     get allCardUids() { return allCardUidsRef.current; },
     get cardUids() { return cardUidsRef.current; },
     fetchPracticeData: refetchTriggerFn,

@@ -87,7 +87,6 @@ export const generatePracticeData = ({
     let algorithmResults;
     if (schedulingAlgorithm === 'FSRS') {
       // 使用FSRS算法
-      console.log('🧠 使用FSRS算法调度');
       const fsrsInput = {
         interval,
         repetition: repetitions,
@@ -97,7 +96,6 @@ export const generatePracticeData = ({
       algorithmResults = fsrsAlgorithm(fsrsInput, grade);
     } else {
       // 使用默认SM2算法
-      console.log('🧠 使用SM2算法调度');
       const supermemoInput = {
         interval,
         repetition: repetitions,
@@ -134,7 +132,6 @@ export type PracticeProps = Session & {
 };
 
 export const practice = async (practiceProps: PracticeProps & { fsrsEnabled?: boolean }) => {
-  console.log('🏃‍♂️ Practice called with:', practiceProps);
 
   const {
     refUid,
@@ -153,7 +150,6 @@ export const practice = async (practiceProps: PracticeProps & { fsrsEnabled?: bo
     fsrsState,
   } = practiceProps;
 
-  console.log('🏃‍♂️ Practice mode - grade:', grade, 'isCramming:', isCramming);
 
   // Just destructuring nextDueDateFromNow here because I don't want to store it
   const {
@@ -173,7 +169,6 @@ export const practice = async (practiceProps: PracticeProps & { fsrsEnabled?: bo
   });
 
   if (!isDryRun && !isCramming) {
-    console.log('🏃‍♂️ Normal mode - saving full practice data...');
     await savePracticeData({
       refUid,
       dataPageTitle,
@@ -181,9 +176,7 @@ export const practice = async (practiceProps: PracticeProps & { fsrsEnabled?: bo
       ...practiceResultData,
     });
   } else if (isCramming) {
-    console.log('🏃‍♂️ Cramming mode - 纯练习模式，不保存任何数据');
   } else if (isDryRun) {
-    console.log('🏃‍♂️ Dry run mode - 测试模式，不保存数据');
   }
 
   return practiceResultData;

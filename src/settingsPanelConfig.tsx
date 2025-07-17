@@ -1,5 +1,6 @@
 import * as asyncUtils from '~/utils/async';
 import RoamSrImportPanel from '~/components/RoamSrImportPanel';
+import DataCleanupPanel from '~/components/DataCleanupPanel';
 import { defaultSettings } from './hooks/useSettings';
 
 const settingsPanelConfig = ({ settings, setSettings }) => {
@@ -27,15 +28,24 @@ const settingsPanelConfig = ({ settings, setSettings }) => {
           },
         },
       },
-      {
-        id: 'migrate-roam-sr-data',
-        name: 'Migrate Roam/Sr Data',
-        description: 'A tool to import your Roam/Sr data into Memo Enhanced.',
-        action: {
-          type: 'reactComponent',
-          component: () => <RoamSrImportPanel dataPageTitle={settings.dataPageTitle} />,
-        },
-      },
+      // {
+      //   id: 'migrate-roam-sr-data',
+      //   name: 'Migrate Roam/Sr Data [DISABLED - 功能已禁用]',
+      //   description: '⚠️ 此功能已临时禁用，因为存在潜在的数据风险。正在重新评估安全性。',
+      //   action: {
+      //     type: 'reactComponent',
+      //     component: () => <RoamSrImportPanel dataPageTitle={settings.dataPageTitle} />,
+      //   },
+      // },
+      // {
+      //   id: 'cleanup-orphaned-data',
+      //   name: 'Clean Up Orphaned Data / 清理孤立数据 [DISABLED - 功能已禁用]',
+      //   description: '⚠️ 此功能已临时禁用，因为存在数据丢失风险。正在开发更安全的版本。',
+      //   action: {
+      //     type: 'reactComponent',
+      //     component: () => <DataCleanupPanel dataPageTitle={settings.dataPageTitle} />,
+      //   },
+      // },
       {
         id: 'dataPageTitle',
         name: 'Data Page Title',

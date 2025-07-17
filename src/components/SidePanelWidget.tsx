@@ -23,6 +23,10 @@ const SidePandelWidget = ({ onClickCallback, today }: SidePanelWidgetProps) => {
   const allDoneToday = today.combinedToday.status === CompletionStatus.Finished;
   const combinedCounts = today.combinedToday;
 
+  const completed = combinedCounts.completed;
+  const newCards = combinedCounts.new;
+  const dueCards = combinedCounts.due;
+
   const iconClass = allDoneToday ? 'bp3-icon-confirm' : 'bp3-icon-box';
 
   return (
@@ -32,25 +36,35 @@ const SidePandelWidget = ({ onClickCallback, today }: SidePanelWidgetProps) => {
       onClick={onClickCallback}
     >
       <div>
-        <div className="flex">
-          <span className={`bp3-icon ${iconClass} icon bp3-icon-small flex items-center`}></span>
+        <div className="flex items-center">
+          <span className={`bp3-icon ${iconClass} icon bp3-icon-small mr-1`}></span>
           <div>Review</div>
         </div>
       </div>
-      <div className="ml-2">
-        {combinedCounts.due > 0 && (
+      <div className="flex items-center ml-2">
+        {newCards > 0 && (
           // @ts-ignore
-          <Tooltip content="Due" placement="top">
-            <Tag active minimal intent="primary" className="text-center" data-testid="due-tag">
-              {combinedCounts.due}
+          <Tooltip content="New Cards" placement="top">
+            <Tag active minimal intent="success" className="text-center" data-testid="new-tag">
+              {newCards}
             </Tag>
           </Tooltip>
         )}
-        {combinedCounts.new > 0 && (
+
+        {dueCards > 0 && (
           // @ts-ignore
-          <Tooltip content="New" placement="top">
-            <Tag active minimal intent="success" className="text-center ml-2" data-testid="new-tag">
-              {combinedCounts.new}
+          <Tooltip content="Due Cards" placement="top">
+            <Tag active minimal intent="primary" className="text-center mx-1" data-testid="due-tag">
+              {dueCards}
+            </Tag>
+          </Tooltip>
+        )}
+
+        {completed > 0 && (
+          // @ts-ignore
+          <Tooltip content="Completed" placement="top">
+            <Tag active minimal intent="none" className="text-center mx-1" data-testid="completed-tag" style={{ color: '#000', backgroundColor: '#f5f5f5', borderColor: '#ccc' }}>
+              {completed}
             </Tag>
           </Tooltip>
         )}

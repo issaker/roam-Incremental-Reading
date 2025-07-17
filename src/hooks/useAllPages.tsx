@@ -1,4 +1,7 @@
 import * as React from 'react';
+import { useAsyncExecution } from './useAsyncExecution';
+import { useRoamData } from './useRoamData';
+import { getAllPagesQuery, normalizeQueryResults } from '~/utils/roamApi';
 
 interface UseAllPagesReturn {
   allPages: string[];
@@ -11,48 +14,38 @@ const useAllPages = ({
 }: { 
   dataPageTitle: string;
 }) => {
-  const [allPages, setAllPages] = React.useState<string[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const isExecutingRef = React.useRef(false);
+  const { queryWithCache } = useRoamData({ defaultTtl: 10000 }); // 10秒缓存
   const [refreshNonce, setRefreshNonce] = React.useState(0);
 
-  const refreshPages = () => {
+  const { data: allPagesData, isLoading, execute } = useAsyncExecution(
+    async () => {
+      const results = await queryWithCache(
+        `all-pages-${refreshNonce}`,
+        getAllPagesQuery,
+        10000
+      );
+      
+      const pageTitles = normalizeQueryResults.toPageTitles(results);
+      const dailyNoteRegex = /(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}(st|nd|rd|th), \d{4}|^\d{4}-\d{2}-\d{2}$/;
+      
+      const filteredPages = pageTitles.filter(title => 
+        !dailyNoteRegex.test(title) && title !== dataPageTitle
+      );
+
+      return [...new Set(filteredPages)];
+    },
+    [dataPageTitle, refreshNonce],
+    {
+      onError: (error) => console.error("获取页面列表失败:", error)
+    }
+  );
+
+  const refreshPages = React.useCallback(() => {
     setRefreshNonce(prev => prev + 1);
-  };
-  
-  React.useEffect(() => {
-    const fetchPages = async () => {
-      if (isExecutingRef.current) {
-        return;
-      }
-      isExecutingRef.current = true;
-      setIsLoading(true);
+  }, []);
 
-      try {
-        const query = `[:find ?title :where [?p :node/title ?title] [?p :block/uid ?uid]]`;
-        const results = window.roamAlphaAPI.q(query);
-        const pageTitles = results.map(result => result[0]).filter(Boolean);
-
-        const dailyNoteRegex = /(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}(st|nd|rd|th), \d{4}|^\d{4}-\d{2}-\d{2}$/;
-        const filteredPages = pageTitles.filter(title => 
-          !dailyNoteRegex.test(title) && title !== dataPageTitle
-        );
-
-        const finalPages = [...new Set(filteredPages)];
-        
-        setAllPages(finalPages);
-      } catch (e) {
-        console.error("获取页面列表失败:", e);
-        // 保留初始列表作为备用
-        setAllPages([]);
-      } finally {
-        setIsLoading(false);
-        isExecutingRef.current = false;
-      }
-    };
-
-    fetchPages();
-  }, [dataPageTitle, refreshNonce]);
+  // 确保返回的allPages始终是数组，避免null问题
+  const allPages = allPagesData || [];
 
   return {
     allPages,

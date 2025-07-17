@@ -35,15 +35,8 @@ const useBlockInfo = ({ refUid }) => {
       try {
         // 🎯 FIXED: 每次都重新获取最新的block信息，不依赖缓存
         // 这样可以确保当子块被删除后，能够获取到最新状态
-        console.log('🔍 [BlockInfo] 获取最新block信息 for:', refUid);
         const freshBlockInfo = await fetchBlockInfo(refUid);
         
-        console.log('🔍 [BlockInfo] 获取结果:', {
-          refUid,
-          hasChildren: !!freshBlockInfo.children?.length,
-          hasChildrenUids: !!freshBlockInfo.childrenUids?.length,
-          childrenCount: freshBlockInfo.children?.length || 0
-        });
         
         // 更新缓存
         blockInfoCache.set(refUid, freshBlockInfo);

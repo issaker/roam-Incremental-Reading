@@ -62,7 +62,6 @@ class RoamZIndexManager {
     // 将样式元素添加到文档头部
     document.head.appendChild(this.styleElement);
 
-    console.log('🔧 Roam Memo: Z-index fix 已激活');
   }
 
   /**
@@ -72,7 +71,6 @@ class RoamZIndexManager {
     if (this.styleElement) {
       document.head.removeChild(this.styleElement);
       this.styleElement = null;
-      console.log('🔧 Roam Memo: Z-index fix 已移除');
     }
   }
 

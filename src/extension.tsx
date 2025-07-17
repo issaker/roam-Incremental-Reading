@@ -2,7 +2,6 @@ import ReactDOM from 'react-dom';
 import App from './app';
 import { FocusStyleManager } from '@blueprintjs/core';
 
-console.log('Memo: Initializing...');
 
 const container_id: string = 'roam-memo-wrapper';
 
@@ -45,7 +44,6 @@ function onload({ extensionAPI }) {
   const container = createAndRenderContainer();
   ReactDOM.render(<App />, container);
 
-  console.log('Memo: Initialized');
 }
 
 function onunload() {
@@ -72,7 +70,6 @@ function onunload() {
     container.remove();
   }
 
-  console.log('Memo: Unloaded - 所有修复脚本已清理');
 }
 
 export default {

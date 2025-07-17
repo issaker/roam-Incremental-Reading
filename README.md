@@ -13,16 +13,14 @@
 
 > 🙏 **致谢**：本项目基于 [digitalmaster/roam-memo](https://github.com/digitalmaster/roam-memo) 开发，感谢原作者 [@digitalmaster](https://github.com/digitalmaster) 的杰出工作！同时特别感谢 [L-M-Sherlock (Jarrett Ye)](https://github.com/L-M-Sherlock) 老师对渐进阅读学习原理和方法的无私推广，受益匪浅。
 
-一个专为 Roam Research 设计的强化版间隔重复插件。类似于 [Anki](https://faqs.ankiweb.net/what-spaced-repetition-algorithm.html)，采用科学的记忆算法帮助你高效记忆任何内容。
+一个专为 Roam Research 设计的渐进阅读插件。类似于 [supermemo](https://supermemo.guru/wiki/SuperMemo)，采用科学的记忆算法和制卡流程帮助你高效记忆任何内容。
 
 ## ✨ v2.3.0 功能亮点
 
-### 📊 智能牌组管理 (体验优化)
-- **无需手动配置**: 插件能全自动发现您的所有 Roam 页面并将其视为牌组。
-- **可视化优先级管理**: 通过滑块流畅地拖拽修改单独的卡片全局优先级，通过“优先级管理器”的二级弹窗，直观地批量调整整个牌组的卡片优先级。
-- **统一的排序体验**: 主界面下拉菜单与"优先级管理器"中的牌组排序完全一致。
+### 智能牌组管理
+- **批量优先级管理**：通过卡片排期点阵图，你可以对所有牌组进行点阵图上的排期管理，横坐标为队列优先级，纵坐标为间隔重复的时间周期，这个点阵反应的是全局的排期，所有卡片在一个全局系统中进行优先级的管理，符合 supermemo 所强调的渐进阅读和混合学习原则。
 
-### 🔄 全局混合学习 (体验优化)
+### 全局混合学习
 - **智能学习模式切换**: 在顶部栏一键切换"单组"或"混合"学习模式，插件会自动记住您的选择。
 - **跨牌组优先级排序**: 在混合模式下，所有卡片的学习顺序将由您设置的全局优先级决定。
 - **实时统计**: 插件主界面会实时更新全局待学卡片的总数。
@@ -59,7 +57,7 @@
 在 Roam Research 的扩展页面roam deport中打开开发者模式，添加以下地址：
 
 ```
-https://raw.githubusercontent.com/issaker/Memo-Enhanced/main/extension.js
+https://raw.githubusercontent.com/issaker/roam-Incremental-Reading/main/extension.js
 ```
 
 **安装步骤：**
@@ -72,11 +70,12 @@ https://raw.githubusercontent.com/issaker/Memo-Enhanced/main/extension.js
 
 ## 🚀 快速开始
 
-1. **创建卡片**：为任何想要记忆的块添加 `#memo` 标签（或自定义标签）
+1. **摘录卡片**：为任何想要记忆的块添加 `#memo` 标签（或自定义标签）
 2. **开始复习**：点击roamresearch侧边栏的 "Review" 按钮启动学习
 3. **智能复习**：根据记忆算法安排的时间复习闪卡
 
 > **💡 小贴士**：子块被视为"答案"，初始状态隐藏。点击"显示答案"来查看它们。
+默认所有具备双链的卡片都会进入渐进阅读，如果你想排除这张卡，可以手动设置它的渐进阅读时间为 100 年或更久，这么做是为了通过更全面的渐进阅读让你不遗漏自己的知识点。
 
 ## 📚 核心功能
 
@@ -87,13 +86,6 @@ https://raw.githubusercontent.com/issaker/Memo-Enhanced/main/extension.js
 - 难记的内容增加复习频率，熟悉的内容延长间隔
 - 这是将大量知识从短期记忆转化为长期记忆最有效的方法
 
-### 🗂️ 多卡组支持
-
-通过插件设置创建多个学习卡组：
-- 在"标签页面"字段中输入逗号分隔的标签列表
-- 例如：`西班牙语, 法语, 编程` 为不同学科建立独立卡组
-
-> **提示**：标签名称包含逗号时，请用引号包围，如 `"页面, 带逗号"`
 
 ### 🎭 文本遮挡（填空练习）
 
@@ -137,26 +129,10 @@ https://raw.githubusercontent.com/issaker/Memo-Enhanced/main/extension.js
 
 通过命令面板快速启动：`CMD + P` → 输入 "Memo: Start Review Session"
 
-### 🔄 RoamSr 数据迁移
-
-从旧版 RoamSr 插件无缝迁移数据：
-
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=-vTHVknIdX4" target="_blank">
-<img src="https://user-images.githubusercontent.com/1279335/220912625-f4cc5ab7-fbf1-4d86-8934-e635ac85ee7b.png" alt="观看视频教程" width="400"/>
-</a>
-
-**迁移步骤：**
-1. 按照 [此指南](https://roamresearch.com/#/app/developer-documentation/page/bmYYKQ4vf) 生成具有写入权限的 API 密钥
-2. 进入插件设置页面，点击"迁移 Roam/Sr 数据"部分的"启动"按钮
-3. 输入 API 密钥并点击"获取预览数据"
-4. 检查数据，旧的 roam/sr 数据应显示在表格中
-5. 确认无误后点击"导入"
-
-> **⚠️ 注意**：建议在迁移前备份你的 #roam/memo 页面。如果数据量大，同步可能需要一些时间。
 
 ## 🐛 问题反馈与功能建议
 
-如有任何问题或建议，请在 [Issues 页面](https://github.com/issaker/roam-memo-prio/issues) 提交，我们会尽快处理！
+如有任何问题或建议，请在 Issues 页面 提交，我们会尽快处理！
 
 ## 💖 支持项目发展
 
@@ -184,7 +160,11 @@ https://raw.githubusercontent.com/issaker/Memo-Enhanced/main/extension.js
 
 </div>
 
-**📄 开源协议**：MIT License
+## 许可证
+
+**专有软件许可证** (Proprietary License)
+版权所有 © 2025 issaker. 保留所有权利。
+本软件为专有软件，受版权法保护。未经明确书面许可，不得复制、分发、修改或披露本软件及其相关文档。
 
 ---
 

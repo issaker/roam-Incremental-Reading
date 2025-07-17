@@ -33,7 +33,6 @@ class RoamFocusManager {
    */
   public activateFocusProtection(): void {
     if (this.isActive) {
-      console.log('🎯 Roam Memo: 焦点保护已激活，无需重复激活');
       return;
     }
 
@@ -43,13 +42,6 @@ class RoamFocusManager {
       
       // 检查失焦的元素是否为我们关心的可编辑块
       if (target && target.matches && target.matches(this.ROAM_EDITABLE_SELECTOR)) {
-        console.log('🎯 Roam Memo: 拦截到 Roam 块的焦点丢失事件，阻止默认行为');
-        console.log('🎯 失焦元素:', {
-          tagName: target.tagName,
-          className: target.className,
-          id: target.id
-        });
-        
         // 阻止默认的失焦行为
         event.preventDefault();
         // 阻止事件冒泡
@@ -63,8 +55,6 @@ class RoamFocusManager {
 
     // 等待 Roam 应用完全加载后进行初始化检查
     this.waitForRoamInitialization();
-
-    console.log('🎯 Roam Memo: 焦点保护机制已激活');
   }
 
   /**
@@ -73,7 +63,6 @@ class RoamFocusManager {
    */
   public deactivateFocusProtection(): void {
     if (!this.isActive) {
-      console.log('🎯 Roam Memo: 焦点保护未激活，无需停用');
       return;
     }
 
@@ -90,7 +79,6 @@ class RoamFocusManager {
     }
 
     this.isActive = false;
-    console.log('🎯 Roam Memo: 焦点保护机制已停用');
   }
 
   /**
@@ -121,8 +109,6 @@ class RoamFocusManager {
       const roamMain = document.querySelector('.roam-main');
       
       if (roamApp && roamMain) {
-        console.log('🎯 Roam Memo: Roam 应用初始化完成，焦点保护脚本准备就绪');
-        
         if (this.initCheckInterval) {
           clearInterval(this.initCheckInterval);
           this.initCheckInterval = null;
@@ -136,8 +122,6 @@ class RoamFocusManager {
    * 在插件卸载时调用，确保没有残留
    */
   public forceCleanup(): void {
-    console.log('🎯 Roam Memo: 执行焦点管理器强制清理');
-    
     this.deactivateFocusProtection();
     
     // 额外的安全检查：确保事件监听器被完全移除
@@ -146,8 +130,6 @@ class RoamFocusManager {
       document.removeEventListener('blur', this.blurEventHandler, false);
       this.blurEventHandler = null;
     }
-
-    console.log('🎯 Roam Memo: 焦点管理器清理完成');
   }
 }
 

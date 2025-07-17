@@ -38,19 +38,29 @@ export const blockInfoQuery = `[
   :where
     [?block :block/uid ?refId]
   ]`;
-export const fetchBlockInfo: (refUid: any) => Promise<BlockInfo> = async (refUid) => {
-  const blockInfo = (await window.roamAlphaAPI.q(blockInfoQuery, refUid))[0][0];
-  const parentChainInfo = await getParentChainInfo({ refUid });
+export const fetchBlockInfo: (refUid: any) => Promise<BlockInfo | null> = async (refUid) => {
+  try {
+    const result = await window.roamAlphaAPI.q(blockInfoQuery, refUid);
+    if (!result || !result[0] || !result[0][0]) {
+      return null; // 明确返回 null 表示块不存在
+    }
+    
+    const blockInfo = result[0][0];
+    const parentChainInfo = await getParentChainInfo({ refUid });
 
-  const sortedChildren = blockInfo.children?.sort((a, b) => a.order - b.order);
+    const sortedChildren = blockInfo.children?.sort((a, b) => a.order - b.order);
 
-  return {
-    string: blockInfo.string,
-    children: sortedChildren?.map((child) => child.string),
-    childrenUids: sortedChildren?.map((child) => child.uid),
-    breadcrumbs: parentChainInfo,
-    refUid,
-  };
+    return {
+      string: blockInfo.string,
+      children: sortedChildren?.map((child) => child.string),
+      childrenUids: sortedChildren?.map((child) => child.uid),
+      breadcrumbs: parentChainInfo,
+      refUid,
+    };
+  } catch (error) {
+    console.warn(`获取块信息失败 ${refUid}:`, error);
+    return null;
+  }
 };
 
 /**
@@ -157,8 +167,8 @@ export const childBlocksOnPageQuery = `[
     [?tagPage :node/title ?tag]
     [?tagPage :block/children ?tagPageChildren]
   ]`;
-export const getChildBlocksOnPage = async (page) => {
-  const queryResults = await window.roamAlphaAPI.q(childBlocksOnPageQuery, page);
+export const getChildBlocksOnPage = (page) => {
+  const queryResults = window.roamAlphaAPI.q(childBlocksOnPageQuery, page);
 
   if (!queryResults.length) return [];
 
@@ -177,20 +187,18 @@ export const childBlocksByUidQuery = `[
     [?parent :block/children ?child]
   ]`;
 
-export const getChildBlocksByUid = async (parentUid: string) => {
+export const getChildBlocksByUid = (parentUid: string) => {
   try {
-    const queryResults = await window.roamAlphaAPI.q(childBlocksByUidQuery, parentUid);
+    const queryResults = window.roamAlphaAPI.q(childBlocksByUidQuery, parentUid);
     
     if (!queryResults.length) return [];
     
     // 返回格式化的子blocks，按order排序
     const childBlocks = queryResults.map(result => result[0]).sort((a, b) => a.order - b.order);
     
-    console.log(`🔍 [Utils] getChildBlocksByUid(${parentUid}) 返回 ${childBlocks.length} 个子blocks`);
-    
     return childBlocks;
   } catch (error) {
-    console.error(`🔍 [Utils] getChildBlocksByUid(${parentUid}) 失败:`, error);
+    console.error('getChildBlocksByUid 失败:', error);
     return [];
   }
 };

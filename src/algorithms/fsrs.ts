@@ -66,11 +66,6 @@ export const fsrsAlgorithm = (item: any, grade: number): FSRSResult => {
     const intervalMs = actualCard.due.getTime() - now.getTime();
     const intervalDays = Math.max(0, Math.round(intervalMs / (1000 * 60 * 60 * 24)));
 
-    console.log('✅ FSRS算法成功:', {
-      intervalDays,
-      nextDue: actualCard.due.toISOString()
-    });
-
     // 转换为SM2兼容的格式
     return {
       interval: intervalDays,

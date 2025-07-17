@@ -183,8 +183,10 @@ export const bulkSavePracticeData = async ({
   }
 };
 
-// 🎯 协同排名系统 - 核心API函数
-export const loadCardRankings = async ({ 
+// 🎯 新的统一优先级系统 - 只使用数组索引
+
+// 加载优先级顺序数组
+export const loadPriorityOrder = async ({ 
   dataPageTitle 
 }: { 
   dataPageTitle: string; 
@@ -196,249 +198,123 @@ export const loadCardRankings = async ({
       heading: 3,
     });
 
-    // 查找"Priority Rankings"容器block（支持两种格式）
+    // 查找"Priority Rankings"容器block
     let priorityContainerUid = getChildBlock(dataBlockUid, 'Priority Rankings');
     if (!priorityContainerUid) {
-      // 兼容旧的粗体格式
-      priorityContainerUid = getChildBlock(dataBlockUid, '**Priority Rankings**');
-    }
-    
-    if (!priorityContainerUid) {
-      console.log('🎯 协同排名系统 - 容器block不存在，返回空列表');
       return [];
     }
 
-    console.log('🎯 协同排名系统 - 找到容器block:', priorityContainerUid);
-
-    // 在容器中查找priority-ranking数据
-    const containerBlocks = await getChildBlocksByUid(priorityContainerUid);
-    
+    // 在容器中查找priority-order数据
+    const containerBlocks = getChildBlocksByUid(priorityContainerUid);
     if (!containerBlocks || containerBlocks.length === 0) {
-      console.log('🎯 协同排名系统 - 容器为空，返回空列表');
       return [];
     }
 
-    console.log('🎯 协同排名系统 - 容器中包含blocks:', containerBlocks.map(b => b.string));
-
-    const priorityBlock = containerBlocks?.find(block => 
-      block.string && block.string.startsWith('priority-ranking::')
+    const priorityOrderBlock = containerBlocks?.find(block => 
+      block.string && block.string.startsWith('priority-order::')
     );
 
-    if (!priorityBlock) {
-      console.log('🎯 协同排名系统 - 未找到priority-ranking数据block');
-      return [];
+    if (priorityOrderBlock) {
+      const orderString = priorityOrderBlock.string.replace('priority-order::', '').trim();
+      if (!orderString) {
+        return [];
+      }
+
+      try {
+        const priorityOrder = JSON.parse(orderString);
+        return priorityOrder;
+      } catch (parseError) {
+        console.error('优先级数据解析失败:', parseError);
+        return [];
+      }
     }
 
-    const orderString = priorityBlock.string.replace('priority-ranking::', '').trim();
-    if (!orderString) {
-      console.log('🎯 协同排名系统 - priority-ranking数据为空');
-      return [];
-    }
-
-    // 支持双重括号格式的解析：((uid1)),((uid2)),((uid3))
-    const rankings = orderString
-      .split(',')
-      .map(uid => uid.trim())
-      .map(uid => {
-        // 移除双重括号，如果存在的话
-        if (uid.startsWith('((') && uid.endsWith('))')) {
-          return uid.slice(2, -2);
-        }
-        return uid;
-      })
-      .filter(uid => uid);
-    
-    console.log('🎯 协同排名系统 - 从容器中成功读取排名列表:', rankings.length, '个卡片');
-    return rankings;
+    return [];
   } catch (error) {
-    console.error('协同排名系统 - 读取排名列表失败:', error);
+    console.error('优先级系统 - 读取优先级顺序失败:', error);
     return [];
   }
 };
 
-export const saveCardRankings = async ({ 
+// 保存优先级顺序数组
+export const savePriorityOrder = async ({ 
   dataPageTitle, 
-  rankings 
+  priorityOrder 
 }: { 
   dataPageTitle: string; 
-  rankings: string[]; 
+  priorityOrder: string[]; 
 }) => {
   try {
     if (!window.roamAlphaAPI) {
       throw new Error('Roam Alpha API 不可用');
     }
 
+    // 报告保存进度
+    window.dispatchEvent(new CustomEvent('memoSavingProgress', { 
+      detail: { status: `正在保存 ${priorityOrder.length.toLocaleString()} 张卡片的优先级...`, progress: 10 } 
+    }));
+
     await getOrCreatePage(dataPageTitle);
+    
+    window.dispatchEvent(new CustomEvent('memoSavingProgress', { 
+      detail: { status: '正在准备数据结构...', progress: 30 } 
+    }));
+    
     const dataBlockUid = await getOrCreateBlockOnPage(dataPageTitle, 'data', -1, {
       open: false,
       heading: 3,
     });
 
-    console.log('🎯 协同排名系统 - 准备保存到data block:', dataBlockUid);
-
-    // 检查并迁移旧的priority-ranking数据（直接在data block下的）
-    const oldRankingBlockUid = getChildBlock(dataBlockUid, 'priority-ranking::', { exactMatch: false });
-    if (oldRankingBlockUid) {
-      console.log('🎯 协同排名系统 - 发现旧数据，正在删除:', oldRankingBlockUid);
-      await window.roamAlphaAPI.deleteBlock({ block: { uid: oldRankingBlockUid } });
-    }
-
-    // 检查并删除旧的粗体格式容器
-    const oldBoldContainerUid = getChildBlock(dataBlockUid, '**Priority Rankings**');
-    if (oldBoldContainerUid) {
-      console.log('🎯 协同排名系统 - 发现旧粗体容器，正在删除:', oldBoldContainerUid);
-      await window.roamAlphaAPI.deleteBlock({ block: { uid: oldBoldContainerUid } });
-    }
-
     // 获取或创建"Priority Rankings"容器block
     const priorityContainerUid = await getOrCreateChildBlock(
       dataBlockUid, 
-      'Priority Rankings', // 使用普通block文本
-      0, // 放在data block的最前面
+      'Priority Rankings',
+      0,
       { 
         open: false,
-        // 不使用heading属性，保持为普通block
       }
     );
 
-    console.log('🎯 协同排名系统 - 容器block UID:', priorityContainerUid);
+    window.dispatchEvent(new CustomEvent('memoSavingProgress', { 
+      detail: { status: '正在检查现有数据...', progress: 50 } 
+    }));
 
-    // 在容器中查找现有的priority-ranking数据
-    const containerBlocks = await getChildBlocksByUid(priorityContainerUid);
-    console.log('🎯 协同排名系统 - 容器中现有blocks:', containerBlocks?.map(b => b.string));
-
-    const existingRankingBlock = containerBlocks?.find(block => 
-      block.string && block.string.startsWith('priority-ranking::')
+    // 在容器中查找现有的priority-order数据
+    const containerBlocks = getChildBlocksByUid(priorityContainerUid);
+    const existingOrderBlock = containerBlocks?.find(block => 
+      block.string && block.string.startsWith('priority-order::')
     );
     
-    // 使用双重括号格式：((uid1)),((uid2)),((uid3))
-    const rankingString = rankings.map(uid => `((${uid}))`).join(',');
-    const fullString = `priority-ranking:: ${rankingString}`;
+    window.dispatchEvent(new CustomEvent('memoSavingProgress', { 
+      detail: { status: '正在写入优先级数据...', progress: 80 } 
+    }));
     
-    console.log('🎯 协同排名系统 - 准备保存数据，卡片数量:', rankings.length);
+    // 使用JSON格式存储优先级顺序
+    const orderString = JSON.stringify(priorityOrder);
+    const fullString = `priority-order:: ${orderString}`;
     
-    if (existingRankingBlock) {
-      // 更新现有的ranking block
+    if (existingOrderBlock) {
+      // 更新现有的order block
       await window.roamAlphaAPI.updateBlock({
         block: {
-          uid: existingRankingBlock.uid,
+          uid: existingOrderBlock.uid,
           string: fullString
         }
       });
-      console.log('🎯 协同排名系统 - 在容器中更新排名列表:', rankings.length, '个卡片');
     } else {
-      // 在容器中创建新的ranking block
-      const newBlockUid = await createChildBlock(priorityContainerUid, fullString, -1);
-      console.log('🎯 协同排名系统 - 在容器中创建排名列表:', rankings.length, '个卡片, UID:', newBlockUid);
+      // 在容器中创建新的order block
+      await createChildBlock(priorityContainerUid, fullString, -1);
     }
     
-    console.log('🎯 协同排名系统 - 保存操作完成');
+    window.dispatchEvent(new CustomEvent('memoSavingProgress', { 
+      detail: { status: '保存完成', progress: 100 } 
+    }));
   } catch (error) {
-    console.error('协同排名系统 - 保存排名列表失败:', error);
+    console.error('优先级系统 - 保存优先级顺序失败:', error);
+    window.dispatchEvent(new CustomEvent('memoSavingProgress', { 
+      detail: { status: '保存失败', progress: 0 } 
+    }));
     throw error;
   }
 };
 
-// 🎯 获取卡片的当前排名
-export const getCardRank = ({
-  refUid,
-  priorityOrder,
-  allCardsCount,
-  defaultPriority,
-}: {
-  refUid: string;
-  priorityOrder: string[];
-  allCardsCount: number;
-  defaultPriority: number;
-}): number => {
-  // ✅ 防御性编程：确保priorityOrder是一个数组
-  if (!priorityOrder || priorityOrder.length === 0) {
-    // 如果排名列表为空，则根据默认优先级估算一个排名
-    return Math.max(1, Math.ceil(allCardsCount * (1 - defaultPriority / 100)));
-  }
-  
-  const index = priorityOrder.indexOf(refUid);
-  
-  // 如果卡片不在排名列表中（新卡片），则根据默认优先级估算
-  if (index === -1) {
-    return Math.max(1, Math.ceil(allCardsCount * (1 - defaultPriority / 100)));
-  }
-  
-  return index + 1; // 排名从1开始
-};
-
-// 🎯 批量保存排名变更（协同处理）
-export const bulkSaveRankingChanges = async ({ 
-  rankingChanges,
-  dataPageTitle,
-  allCardUids
-}: { 
-  rankingChanges: Record<string, number>; 
-  dataPageTitle: string;
-  allCardUids: string[];
-}) => {
-  try {
-    // ✅ 参数验证
-    if (!rankingChanges || Object.keys(rankingChanges).length === 0) {
-      return;
-    }
-    if (!dataPageTitle?.trim() || !allCardUids?.length) {
-      throw new Error('dataPageTitle 或 allCardUids 不能为空');
-    }
-
-    console.log(`🎯 协同排名系统 - 开始批量保存排名变更: ${Object.keys(rankingChanges).length} 个变更`);
-
-    // 1. 加载当前排名
-    let currentRankings = await loadCardRankings({ dataPageTitle });
-    // 如果没有排名，则使用所有卡片的列表作为基础
-    if (currentRankings.length === 0) {
-      currentRankings = [...allCardUids];
-    }
-    
-    // 🚑 热修: 去重当前排名列表，保留首次出现的顺序，避免后续插入时报"包含重复卡片"错误
-    const seen = new Set<string>();
-    currentRankings = currentRankings.filter(uid => {
-      if (seen.has(uid)) return false;
-      seen.add(uid);
-      return true;
-    });
-
-    // 2. 创建一个已变更卡片的Set，用于O(1)复杂度的快速查找
-    const changedUids = new Set(Object.keys(rankingChanges));
-
-    // 3. 创建一个只包含未变更卡片的稳定列表，保持其原有相对顺序
-    const unchangedCards = currentRankings.filter(uid => !changedUids.has(uid));
-
-    // 4. 将变更按目标排名排序，然后将它们插入到稳定列表中
-    const sortedChanges = Object.entries(rankingChanges).sort(([,a], [,b]) => a - b);
-    
-    let newRankings = unchangedCards;
-    for (const [cardUid, targetRank] of sortedChanges) {
-      // 确保目标排名在有效范围内
-      const insertIndex = Math.max(0, Math.min(targetRank - 1, newRankings.length));
-      newRankings.splice(insertIndex, 0, cardUid);
-    }
-    
-    // ✅ 验证结果的完整性
-    if (new Set(newRankings).size !== newRankings.length) {
-      console.error("排名列表包含重复卡片，保存操作已中止。");
-      throw new Error('排名列表包含重复卡片');
-    }
-
-    // ✅ 原子性保存
-    await saveCardRankings({ dataPageTitle, rankings: newRankings });
-    
-    console.log(`🎯 协同排名系统 - 批量保存排名变更完成: ${newRankings.length} 个卡片`);
-  } catch (error) {
-    console.error('🎯 协同排名系统 - 批量保存排名变更失败:', error);
-    
-    // ✅ 提供更详细的错误信息
-    if (error.message?.includes('API')) {
-      throw new Error('网络连接失败，请检查网络后重试');
-    } else if (error.message?.includes('权限')) {
-      throw new Error('没有修改权限，请检查Roam Research设置');
-    } else {
-      throw new Error(`保存失败: ${error.message || '未知错误'}`);
-    }
-  }
-};
