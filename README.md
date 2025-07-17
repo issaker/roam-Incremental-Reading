@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>优化版本演示：</strong><br/>
-  <img src="https://github.com/user-attachments/assets/ed9e00c1-558a-4550-8001-1145c8594967" alt="优化版本演示" width="600">
+  <img src="README-image/插件截图点阵图.jpg" alt="优化版本演示" width="600">
 </p>
 
 
